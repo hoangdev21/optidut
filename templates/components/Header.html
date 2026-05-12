@@ -1,0 +1,25 @@
+<header class="header">
+    <div class="header-left">
+        <button class="icon-btn" id="toggleSidebar" title="Thu nhỏ/Mở rộng menu">
+            <i class='bx bx-menu-alt-left'></i>
+        </button>
+        <span class="header-title">{% block header_title %}OptiDUT Dashboard{% endblock %}</span>
+    </div>
+    <div class="header-right">
+        <!-- Fullscreen Button -->
+        <button class="icon-btn" id="toggleFullscreen" title="Toàn màn hình">
+            <i class='bx bx-fullscreen'></i>
+        </button>
+
+        <!-- User Quick Access -->
+        <div style="display: flex; align-items: center; gap: 10px; margin-left: 10px; padding-left: 15px; border-left: 1px solid var(--color-border);">
+            <div style="text-align: right; line-height: 1.2;">
+                <div style="font-size: 13px; font-weight: 600; color: var(--color-text);">{{ user.ho_ten }}</div>
+                <div style="font-size: 11px; color: var(--color-text-secondary);">{{ user.get_vai_tro_display }}</div>
+            </div>
+            <div class="user-avatar" style="width: 34px; height: 34px; background: #E2E8F0; color: var(--color-primary);">
+                {{ user.ho_ten|first|default:"U" }}
+            </div>
+        </div>
+    </div>
+</header>

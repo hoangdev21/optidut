@@ -1,0 +1,219 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Quản lý Thời khóa biểu - OptiDUT{% endblock %}
+{% block extra_css %}
+<style>
+    .admin-tkb { max-width: 1400px; margin: 0 auto; }
+    .week-nav { display: flex; align-items: center; justify-content: center; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
+    .week-nav .btn { padding: 8px 16px; font-size: 13px; }
+    .week-nav .week-label { font-size: 16px; font-weight: 600; color: var(--color-text); min-width: 260px; text-align: center; }
+    .week-nav .week-label small { display: block; font-size: 13px; font-weight: 400; color: var(--color-text-secondary); }
+
+    /* Day tabs */
+    .day-tabs { display: flex; justify-content: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+    .day-tab { padding: 10px 14px; border: 1px solid var(--color-border); border-radius: 2px; text-decoration: none; color: var(--color-text); font-size: 13px; font-weight: 500; text-align: center; min-width: 110px; background: #fff; }
+    .day-tab:hover { border-color: var(--color-primary); }
+    .day-tab.active { border-color: var(--color-primary); color: var(--color-primary); font-weight: 600; }
+    .day-tab.today { border-color: var(--color-accent); }
+    .day-tab .tab-date { font-size: 11px; color: var(--color-text-secondary); }
+    .day-tab .tab-count { font-size: 11px; color: var(--color-text-secondary); margin-top: 2px; display: inline-block; }
+
+    /* Stats */
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+    .stat-card { background: #fff; border: 1px solid var(--color-border); border-radius: 2px; padding: 16px 12px; text-align: center; }
+    .stat-card.is-active { border-color: var(--color-primary); }
+    .stat-link { display: block; color: inherit; text-decoration: none; }
+    .stat-icon { width: 34px; height: 34px; object-fit: contain; display: block; margin: 0 auto 8px; }
+    .stat-value { font-size: 20px; font-weight: 700; color: var(--color-primary); }
+    .stat-label { font-size: 12px; color: var(--color-text-secondary); }
+
+    /* Table list */
+    .table-shell { border: 1px solid var(--color-text); border-radius: 0; background: var(--color-white); overflow-x: auto; }
+    .basic-table { width: 100%; border-collapse: collapse; min-width: 980px; font-size: 13px; }
+    .basic-table th,
+    .basic-table td { border: 1px solid var(--color-text); padding: 10px 12px; }
+    .basic-table thead { background: var(--color-primary); color: var(--color-white); }
+    .basic-table th { background: var(--color-primary); color: var(--color-white); text-transform: uppercase; letter-spacing: 0.4px; font-size: 12px; }
+    .basic-table tbody tr:nth-child(even) { background: #F0F6FF; }
+    .basic-table tbody tr:hover { background: #E6F0FF; }
+    .checkbox-cell { width: 42px; text-align: center; }
+    .checkbox-input { width: 16px; height: 16px; accent-color: var(--color-primary); }
+    .text-center { text-align: center; }
+    .status-text { font-size: 12px; font-weight: 600; }
+    .status-active { color: var(--color-success); }
+    .status-cancel { color: var(--color-danger); }
+
+    @media (max-width: 992px) {
+        .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 576px) {
+        .day-tab { min-width: 100%; }
+        .stats-grid { grid-template-columns: 1fr; }
+        .week-nav .btn { width: 100%; justify-content: center; }
+    }
+</style>
+{% endblock %}
+{% block content %}
+<div class="admin-tkb">
+    <div class="page-header" style="margin-bottom:12px;">
+        <h1 class="page-title"><i class='bx bx-calendar-edit'></i> Quản lý Thời khóa biểu</h1>
+        <div style="display:flex;gap:8px;">
+            {% if user.la_giao_vu %}
+            <a href="{% url 'danh_sach_yeu_cau' %}" class="btn btn-outline"><i class='bx bx-git-pull-request'></i> Yêu cầu đổi lịch {% if cho_duyet %}<span class="badge badge-accent">{{ cho_duyet }}</span>{% endif %}</a>
+            <a href="{% url 'them_lich_hang_loat' %}" class="btn btn-accent"><i class='bx bx-calendar-plus'></i> Xếp lịch hàng loạt</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Week navigation -->
+    <div class="week-nav">
+        <a href="?ngay={{ tuan_truoc|date:'Y-m-d' }}&view={{ list_mode }}" class="btn btn-outline">◀ Tuần trước</a>
+        <div class="week-label">
+            {{ dau_tuan|date:"d/m" }} — {{ cuoi_tuan|date:"d/m/Y" }}
+            <small>{% if hom_nay >= dau_tuan and hom_nay <= cuoi_tuan %}Tuần hiện tại{% endif %}</small>
+        </div>
+        <a href="?ngay={{ tuan_sau|date:'Y-m-d' }}&view={{ list_mode }}" class="btn btn-outline">Tuần sau ▶</a>
+        <a href="{% url 'thoi_khoa_bieu_tuan' %}?view={{ list_mode }}" class="btn btn-primary" style="font-size:12px;">↩ Tuần này</a>
+    </div>
+
+    <!-- Day tabs -->
+    <div class="day-tabs">
+        {% for d in ds_ngay %}
+        <a href="?ngay={{ dau_tuan|date:'Y-m-d' }}&day={{ d.ngay|date:'Y-m-d' }}&view={{ list_mode }}"
+           class="day-tab {% if selected_day == d.ngay %}active{% endif %} {% if d.ngay == hom_nay %}today{% endif %}">
+            {{ d.ten_thu }}
+            <div class="tab-date">{{ d.ngay|date:"d/m" }}</div>
+            {% if d.count %}<span class="tab-count">{{ d.count }} lịch</span>{% endif %}
+        </a>
+        {% endfor %}
+    </div>
+
+    <!-- Stats for selected day -->
+    <div class="stats-grid">
+        <a class="stat-card stat-link {% if list_mode == 'all' %}is-active{% endif %}" href="?ngay={{ dau_tuan|date:'Y-m-d' }}&day={{ selected_day|date:'Y-m-d' }}&view=all">
+            <img src="{% static 'img/stats-total.png' %}" alt="Tong lich" class="stat-icon">
+            <div class="stat-value">{{ day_stats.total }}</div>
+            <div class="stat-label">Tổng lịch</div>
+        </a>
+        <a class="stat-card stat-link {% if list_mode == 'rooms' %}is-active{% endif %}" href="?ngay={{ dau_tuan|date:'Y-m-d' }}&day={{ selected_day|date:'Y-m-d' }}&view=rooms">
+            <img src="{% static 'img/stats-rooms.png' %}" alt="Phong su dung" class="stat-icon">
+            <div class="stat-value">{{ day_stats.rooms }}</div>
+            <div class="stat-label">Phòng sử dụng</div>
+        </a>
+        <a class="stat-card stat-link {% if list_mode == 'teachers' %}is-active{% endif %}" href="?ngay={{ dau_tuan|date:'Y-m-d' }}&day={{ selected_day|date:'Y-m-d' }}&view=teachers">
+            <img src="{% static 'img/stats-teachers.png' %}" alt="Giang vien" class="stat-icon">
+            <div class="stat-value">{{ day_stats.gvs }}</div>
+            <div class="stat-label">Giảng viên</div>
+        </a>
+        <a class="stat-card stat-link {% if list_mode == 'cancelled' %}is-active{% endif %}" href="?ngay={{ dau_tuan|date:'Y-m-d' }}&day={{ selected_day|date:'Y-m-d' }}&view=cancelled">
+            <img src="{% static 'img/stats-cancel.png' %}" alt="Da huy" class="stat-icon">
+            <div class="stat-value">{{ day_stats.cancelled }}</div>
+            <div class="stat-label">Đã hủy</div>
+        </a>
+    </div>
+
+    <!-- Schedule list for selected day -->
+    <div class="table-shell">
+        <table class="basic-table">
+            {% if list_mode == 'rooms' %}
+            <thead>
+                <tr>
+                    <th class="checkbox-cell"><input type="checkbox" class="checkbox-input" aria-label="Chọn tất cả"></th>
+                    <th class="text-center">STT</th>
+                    <th class="text-center">Phòng</th>
+                    <th class="text-center">Số lịch</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in page_obj %}
+                <tr>
+                    <td class="checkbox-cell"><input type="checkbox" class="checkbox-input" aria-label="Chọn dòng"></td>
+                    <td class="text-center">{{ page_obj.start_index|add:forloop.counter0 }}</td>
+                    <td class="text-center">{{ row.ma_phong }}</td>
+                    <td class="text-center">{{ row.so_lich }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="text-center" style="padding: 24px;">Không có phòng sử dụng.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            {% elif list_mode == 'teachers' %}
+            <thead>
+                <tr>
+                    <th class="checkbox-cell"><input type="checkbox" class="checkbox-input" aria-label="Chọn tất cả"></th>
+                    <th class="text-center">STT</th>
+                    <th>Giảng viên</th>
+                    <th class="text-center">Số lịch</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in page_obj %}
+                <tr>
+                    <td class="checkbox-cell"><input type="checkbox" class="checkbox-input" aria-label="Chọn dòng"></td>
+                    <td class="text-center">{{ page_obj.start_index|add:forloop.counter0 }}</td>
+                    <td>{{ row.ho_ten }}</td>
+                    <td class="text-center">{{ row.so_lich }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="text-center" style="padding: 24px;">Không có giảng viên.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            {% else %}
+            <thead>
+                <tr>
+                    <th class="checkbox-cell"><input type="checkbox" class="checkbox-input" aria-label="Chọn tất cả"></th>
+                    <th class="text-center">STT</th>
+                    <th>Tên môn học</th>
+                    <th>Giảng viên</th>
+                    <th>Lớp</th>
+                    <th class="text-center">Phòng</th>
+                    <th class="text-center">Tiết</th>
+                    <th class="text-center">Trạng thái</th>
+                    {% if user.la_giao_vu %}
+                    <th class="text-center">Tác vụ</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for lich in page_obj %}
+                <tr>
+                    <td class="checkbox-cell"><input type="checkbox" class="checkbox-input" aria-label="Chọn dòng"></td>
+                    <td class="text-center">{{ page_obj.start_index|add:forloop.counter0 }}</td>
+                    <td>{{ lich.mon_hoc }}</td>
+                    <td>{{ lich.giang_vien.ho_ten }}</td>
+                    <td>{{ lich.lop_hoc.ten_lop|default:lich.ma_lop|default:"-" }}</td>
+                    <td class="text-center">{{ lich.phong_hoc.ma_phong }}</td>
+                    <td class="text-center">{{ lich.tiet_bat_dau }}-{{ lich.tiet_ket_thuc }}</td>
+                    <td class="text-center">
+                        {% if lich.trang_thai == 'hoat_dong' %}
+                        <span class="status-text status-active">Hoạt động</span>
+                        {% else %}
+                        <span class="status-text status-cancel">Đã hủy</span>
+                        {% endif %}
+                    </td>
+                    {% if user.la_giao_vu %}
+                    <td class="text-center">
+                        <a href="{% url 'chinh_sua_lich' lich.pk %}" class="btn btn-sm btn-primary">Sửa</a>
+                        {% if lich.trang_thai == 'hoat_dong' %}
+                        <a href="{% url 'huy_lich' lich.pk %}" class="btn btn-sm btn-danger">Hủy</a>
+                        {% endif %}
+                    </td>
+                    {% endif %}
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="{% if user.la_giao_vu %}9{% else %}8{% endif %}" class="text-center" style="padding: 24px;">
+                        Không có lịch học nào trong ngày này.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            {% endif %}
+        </table>
+    </div>
+    {% with page_obj=page_obj %}{% include 'components/Pagination.html' %}{% endwith %}
+</div>
+{% endblock %}

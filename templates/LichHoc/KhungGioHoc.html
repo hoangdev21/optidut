@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% block title %}Khung giờ tiết học - OptiDUT{% endblock %}
+{% block extra_css %}
+<style>
+    .khung-gio-wrapper { max-width: 900px; margin: 0 auto; }
+    .khung-gio-header { text-align: center; margin-bottom: 30px; }
+    .khung-gio-header h1 { font-size: 24px; font-weight: 700; color: var(--color-primary); text-transform: uppercase; letter-spacing: 1px; }
+    .khung-gio-header p { color: var(--color-text-secondary); font-size: 14px; margin-top: 6px; }
+    .khung-gio-table { width: 100%; border-collapse: collapse; }
+    .khung-gio-table th { background: var(--color-primary); color: #fff; padding: 12px 16px; text-align: center; font-size: 14px; font-weight: 600; }
+    .khung-gio-table td { padding: 10px 16px; text-align: center; border-bottom: 1px solid var(--color-border); font-size: 14px; }
+    .khung-gio-table tr:hover { background: rgba(0,51,102,0.02); }
+    .buoi-label { background: #f8f9fa; font-weight: 600; color: var(--color-primary); text-align: left !important; padding-left: 20px !important; font-size: 15px; }
+    .tiet-num { font-weight: 600; color: var(--color-text); }
+    .gio-text { font-size: 15px; font-weight: 500; color: var(--color-text); letter-spacing: 0.3px; }
+    .giai-lao { color: var(--color-accent); font-weight: 500; font-size: 13px; }
+    .btn-group-center { display: flex; justify-content: center; gap: 12px; margin-top: 24px; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="khung-gio-wrapper">
+    <div class="khung-gio-header">
+        <h1><i class='bx bx-time-five'></i> Thời gian buổi học</h1>
+        <p>Trường Đại học Bách Khoa - ĐHĐN — Phòng Công tác Sinh viên</p>
+    </div>
+
+    <div class="table-container">
+        <table class="khung-gio-table">
+            <thead>
+                <tr>
+                    <th style="width:140px;">Buổi</th>
+                    <th style="width:80px;">Tiết</th>
+                    <th>Bắt Đầu</th>
+                    <th>Kết Thúc</th>
+                    <th>Giải Lao</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for tiet_num, info in khung_gio.items %}
+                    {% ifchanged info.buoi %}
+                    <tr>
+                        <td class="buoi-label" colspan="5">{{ info.buoi }}</td>
+                    </tr>
+                    {% endifchanged %}
+                    <tr>
+                        <td></td>
+                        <td class="tiet-num">Tiết {{ tiet_num }}</td>
+                        <td class="gio-text">{{ info.bat_dau }}</td>
+                        <td class="gio-text">{{ info.ket_thuc }}</td>
+                        <td class="giai-lao">10 phút</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="btn-group-center">
+        <a href="{% url 'thoi_khoa_bieu_tuan' %}" class="btn btn-primary"><i class='bx bx-calendar'></i> Xem thời khóa biểu tuần</a>
+        <a href="{% url 'danh_sach_lich' %}" class="btn btn-outline"><i class='bx bx-list-ul'></i> Xem lịch học hôm nay</a>
+    </div>
+</div>
+{% endblock %}

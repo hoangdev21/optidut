@@ -1,0 +1,151 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Quản lý Lớp học - OptiDUT{% endblock %}
+
+{% block extra_css %}
+<style>
+    .classes-wrapper { max-width: 1400px; margin: 0 auto; }
+    
+    /* Filter Card Style - Spread Out */
+    .filter-card {
+        background: var(--color-white);
+        border: 1px solid var(--color-border);
+        border-radius: 4px;
+        padding: 24px;
+        margin-bottom: 24px;
+    }
+    .filter-form {
+        display: flex;
+        gap: 20px;
+        align-items: flex-end;
+        flex-wrap: wrap;
+    }
+    .filter-item { flex: 1; min-width: 200px; }
+    .filter-item label { display: block; font-size: 12px; font-weight: 600; color: var(--color-text-secondary); margin-bottom: 8px; }
+
+    /* Table Styles - Professional Spread Out */
+    .table-responsive { width: 100%; overflow-x: auto; }
+    .data-table { width: 100%; border-collapse: collapse; min-width: 1000px; font-size: 13px; border: none !important; }
+    .data-table th { 
+        background: var(--color-primary); 
+        color: var(--color-white); 
+        font-weight: 600; 
+        text-transform: uppercase; 
+        font-size: 11px; 
+        letter-spacing: 0.6px;
+        padding: 15px 20px;
+        text-align: left;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .data-table td { 
+        padding: 15px 20px; 
+        border-bottom: 1px solid var(--color-border); /* Clear bottom border as requested */
+        border-left: 1px solid var(--color-border);
+        border-right: 1px solid var(--color-border);
+        vertical-align: middle; 
+    }
+    .data-table tbody tr:nth-child(even) { background: #F8FAFC; }
+    .data-table tbody tr:hover { background: #F1F5F9; }
+
+    .action-btns { display: flex; gap: 10px; justify-content: center; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="classes-wrapper">
+    <div class="page-header">
+        <h1 class="page-title"><i class='bx bx-group'></i> Quản lý danh sách Lớp học</h1>
+        <a href="{% url 'them_lop' %}" class="btn btn-primary"><i class='bx bx-plus-circle'></i> Tạo lớp học mới</a>
+    </div>
+
+    <!-- Enhanced Filter Card -->
+    <div class="filter-card">
+        <form method="get" class="filter-form">
+            <div class="filter-item" style="flex: 2;">
+                <label>Tìm kiếm lớp</label>
+                <input type="text" name="q" value="{{ tu_khoa }}" class="form-input" placeholder="Nhập tên lớp học...">
+            </div>
+            <div class="filter-item">
+                <label>Khoa / Ngành</label>
+                <select name="khoa" class="form-select">
+                    <option value="">Tất cả khoa</option>
+                    {% for k in ds_khoa %}
+                    <option value="{{ k }}" {% if k == khoa_loc %}selected{% endif %}>{{ k }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-item">
+                <label>Niên khóa</label>
+                <select name="nien_khoa" class="form-select">
+                    <option value="">Tất cả khóa</option>
+                    {% for nk in ds_nien_khoa %}
+                    <option value="{{ nk }}" {% if nk == nien_khoa_loc %}selected{% endif %}>{{ nk }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div style="flex-shrink: 0;">
+                <button type="submit" class="btn btn-primary" style="padding: 10px 25px;">
+                    <i class='bx bx-filter-alt'></i> Lọc dữ liệu
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Table Section -->
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th style="width: 70px;" class="text-center">STT</th>
+                    <th>Tên lớp sinh viên</th>
+                    <th>Khoa trực thuộc</th>
+                    <th style="width: 180px;">Niên khóa</th>
+                    <th style="width: 180px;" class="text-center">Số lượng SV</th>
+                    <th style="width: 200px;" class="text-center">Thao tác quản lý</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for lop in lop_hocs %}
+                <tr>
+                    <td class="text-center">{{ forloop.counter0|add:lop_hocs.start_index }}</td>
+                    <td><strong style="color: var(--color-primary); font-size: 15px;">{{ lop.ten_lop }}</strong></td>
+                    <td><span style="color: var(--color-text); font-weight: 500;">{{ lop.khoa|default:"Chưa xác định" }}</span></td>
+                    <td><span class="badge badge-outline" style="border-radius: 4px; padding: 4px 10px;">{{ lop.nien_khoa|default:"-" }}</span></td>
+                    <td class="text-center">
+                        <a href="{% url 'danh_sach_sv_lop' lop.pk %}" class="badge" style="background: #E0E7FF; color: #4338CA; border: none; font-weight: 600; padding: 6px 12px; text-decoration: none;">
+                            <i class='bx bx-user'></i> {{ lop.so_sv }} Sinh viên
+                        </a>
+                    </td>
+                    <td>
+                        <div class="action-btns">
+                            <a href="{% url 'danh_sach_sv_lop' lop.pk %}" class="btn btn-sm btn-outline" title="Danh sách sinh viên">
+                                <i class='bx bx-group' style="font-size: 18px;"></i>
+                            </a>
+                            <a href="{% url 'chinh_sua_lop' lop.pk %}" class="btn btn-sm btn-outline" title="Chỉnh sửa thông tin">
+                                <i class='bx bx-edit' style="font-size: 18px; color: var(--color-primary);"></i>
+                            </a>
+                            <a href="#" class="btn btn-sm btn-outline" title="Xóa lớp" onclick="return confirm('Bạn có chắc chắn muốn xóa lớp {{ lop.ten_lop }}?')">
+                                <i class='bx bx-trash' style="font-size: 18px; color: var(--color-danger);"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center" style="padding: 80px;">
+                        <i class='bx bx-folder-open' style="font-size: 56px; color: #CBD5E1; display: block; margin-bottom: 15px;"></i>
+                        <div style="color: var(--color-text-secondary); font-size: 16px;">Không tìm thấy lớp học nào phù hợp với bộ lọc.</div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div style="margin-top: 25px;">
+        {% with page_obj=lop_hocs %}
+        {% include 'components/Pagination.html' %}
+        {% endwith %}
+    </div>
+</div>
+{% endblock %}

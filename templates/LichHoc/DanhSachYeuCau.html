@@ -1,0 +1,203 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Yêu cầu đổi lịch - OptiDUT{% endblock %}
+
+{% block extra_css %}
+<style>
+    .yc-wrapper { max-width: 1400px; margin: 0 auto; }
+    
+    /* Week Day Selector Styles */
+    .week-toolbar { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+    .week-label { font-size: 16px; font-weight: 600; color: var(--color-text); min-width: 220px; text-align: center; }
+    .week-label small { display: block; font-size: 12px; font-weight: 400; color: var(--color-text-secondary); }
+
+    .week-days { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
+    .day-btn { 
+        display: inline-flex; 
+        flex-direction: column; 
+        align-items: center; 
+        justify-content: center; 
+        min-width: 100px; 
+        padding: 12px 10px; 
+        border: 1px solid var(--color-border); 
+        background: var(--color-white); 
+        color: var(--color-text); 
+        font-size: 13px; 
+        font-weight: 600;
+        border-radius: 4px;
+        transition: all 0.2s ease;
+        text-decoration: none;
+    }
+    .day-btn span { margin-top: 4px; font-size: 11px; color: var(--color-text-secondary); font-weight: 400; }
+    .day-btn:hover { border-color: var(--color-primary); background: #F8FAFC; transform: translateY(-2px); }
+    .day-btn.is-active { 
+        background: var(--color-primary); 
+        border-color: var(--color-primary); 
+        color: var(--color-white); 
+        box-shadow: 0 4px 10px rgba(0, 51, 102, 0.2);
+    }
+    .day-btn.is-active span { color: rgba(255, 255, 255, 0.8); }
+    .day-btn.is-today { position: relative; }
+    .day-btn.is-today::after {
+        content: 'Hôm nay';
+        position: absolute;
+        top: -8px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--color-accent);
+        color: white;
+        font-size: 9px;
+        padding: 1px 6px;
+        border-radius: 10px;
+        white-space: nowrap;
+    }
+
+    /* Filter Bar Styles */
+    .filter-card {
+        background: var(--color-white);
+        border: 1px solid var(--color-border);
+        border-radius: 4px;
+        padding: 20px;
+        margin-bottom: 24px;
+    }
+    .filter-form {
+        display: flex;
+        gap: 20px;
+        align-items: flex-end;
+        flex-wrap: wrap;
+    }
+    .filter-item { flex: 1; min-width: 200px; }
+    .filter-item label { display: block; font-size: 12px; font-weight: 600; color: var(--color-text-secondary); margin-bottom: 6px; }
+
+    /* ORIGINAL Table Styles Restored */
+    .yc-table-shell { border: 1px solid var(--color-text); border-radius: 0; background: var(--color-white); overflow-x: auto; }
+    .yc-table { width: 100%; border-collapse: collapse; min-width: 1100px; font-size: 13px; }
+    .yc-table th,
+    .yc-table td { border: 1px solid var(--color-text); padding: 10px 12px; vertical-align: top; }
+    .yc-table thead { background: var(--color-primary); color: var(--color-white); }
+    .yc-table th { background: var(--color-primary); color: var(--color-white); text-transform: uppercase; letter-spacing: 0.4px; font-size: 12px; }
+    .yc-table tbody tr:nth-child(even) { background: #F0F6FF; }
+    .yc-table tbody tr:hover { background: #E6F0FF; }
+
+    .yc-meta { font-size: 12px; color: var(--color-text-secondary); }
+    .text-center { text-align: center; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="yc-wrapper">
+    <div class="page-header">
+        <h1 class="page-title"><i class='bx bx-git-pull-request'></i> Yêu cầu đổi lịch</h1>
+    </div>
+
+    <!-- Week Selector -->
+    <div class="week-toolbar">
+        <a href="?ngay={{ tuan_truoc|date:'Y-m-d' }}{% if trang_thai_loc %}&trang_thai={{ trang_thai_loc }}{% endif %}{% if loai_loc %}&loai={{ loai_loc }}{% endif %}" class="btn btn-outline">◀ Tuần trước</a>
+        <div class="week-label">
+            {{ dau_tuan|date:"d/m" }} — {{ cuoi_tuan|date:"d/m/Y" }}
+            <small>{% if hom_nay >= dau_tuan and hom_nay <= cuoi_tuan %}Tuần hiện tại{% endif %}</small>
+        </div>
+        <a href="?ngay={{ tuan_sau|date:'Y-m-d' }}{% if trang_thai_loc %}&trang_thai={{ trang_thai_loc }}{% endif %}{% if loai_loc %}&loai={{ loai_loc }}{% endif %}" class="btn btn-outline">Tuần sau ▶</a>
+        <a href="{% url 'danh_sach_yeu_cau' %}" class="btn btn-primary" style="font-size:12px;">Tất cả thời gian</a>
+    </div>
+
+    <div class="week-days">
+        {% for d in ds_ngay %}
+        <a href="?ngay={{ d.ngay|date:'Y-m-d' }}{% if trang_thai_loc %}&trang_thai={{ trang_thai_loc }}{% endif %}{% if loai_loc %}&loai={{ loai_loc }}{% endif %}" class="day-btn{% if d.is_selected %} is-active{% endif %}{% if d.is_today %} is-today{% endif %}">
+            {{ d.ten_thu }}
+            <span>{{ d.ngay|date:"d/m" }}</span>
+        </a>
+        {% endfor %}
+    </div>
+
+    <!-- Filter Card -->
+    <div class="filter-card">
+        <form method="get" class="filter-form">
+            <div class="filter-item">
+                <label>Tìm kiếm</label>
+                <input type="text" name="q" class="form-input" value="{{ tu_khoa }}" placeholder="Tên môn, giảng viên...">
+            </div>
+            <div class="filter-item">
+                <label>Trạng thái</label>
+                <select name="trang_thai" class="form-select">
+                    <option value="">Tất cả trạng thái</option>
+                    <option value="cho_duyet" {% if trang_thai_loc == 'cho_duyet' %}selected{% endif %}>Chờ duyệt</option>
+                    <option value="da_duyet" {% if trang_thai_loc == 'da_duyet' %}selected{% endif %}>Đã duyệt</option>
+                    <option value="tu_choi" {% if trang_thai_loc == 'tu_choi' %}selected{% endif %}>Từ chối</option>
+                </select>
+            </div>
+            <div class="filter-item">
+                <label>Loại yêu cầu</label>
+                <select name="loai" class="form-select">
+                    <option value="">Tất cả loại</option>
+                    <option value="doi_phong" {% if loai_loc == 'doi_phong' %}selected{% endif %}>Đổi phòng</option>
+                    <option value="doi_gio" {% if loai_loc == 'doi_gio' %}selected{% endif %}>Đổi giờ / Tiết</option>
+                    <option value="huy_buoi" {% if loai_loc == 'huy_buoi' %}selected{% endif %}>Hủy buổi học</option>
+                </select>
+            </div>
+            {% if ngay_hien_tai %}
+            <input type="hidden" name="ngay" value="{{ ngay_hien_tai|date:'Y-m-d' }}">
+            {% endif %}
+            <div style="flex-shrink: 0;">
+                <button type="submit" class="btn btn-primary" style="padding-left: 30px; padding-right: 30px;"><i class='bx bx-filter-alt'></i> Lọc dữ liệu</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- ORIGINAL Table Structure -->
+    <div class="yc-table-shell">
+        <table class="yc-table">
+            <thead>
+                <tr>
+                    <th class="text-center">STT</th>
+                    <th>Loại yêu cầu</th>
+                    <th>Tên môn học</th>
+                    <th>Lớp</th>
+                    <th class="text-center">Phòng</th>
+                    <th class="text-center">Ngày</th>
+                    <th class="text-center">Tiết</th>
+                    <th>Thay đổi</th>
+                    <th>Người yêu cầu</th>
+                    <th class="text-center">Trạng thái</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for yc in yeu_caus %}
+                <tr>
+                    <td class="text-center">{{ forloop.counter }}</td>
+                    <td>{{ yc.get_loai_yeu_cau_display }}</td>
+                    <td style="font-weight: 600; color: var(--color-primary);">{{ yc.lich_hoc.mon_hoc }}</td>
+                    <td>{{ yc.lich_hoc.lop_hoc.ten_lop|default:"-" }}</td>
+                    <td class="text-center">{{ yc.lich_hoc.phong_hoc.ma_phong }}</td>
+                    <td class="text-center">{{ yc.lich_hoc.ngay_hoc|date:"d/m/Y" }}</td>
+                    <td class="text-center">{{ yc.lich_hoc.tiet_bat_dau }}-{{ yc.lich_hoc.tiet_ket_thuc }}</td>
+                    <td>
+                        <div class="yc-meta">{% if yc.phong_moi %}Phòng mới: <strong>{{ yc.phong_moi.ma_phong }}</strong>{% endif %}</div>
+                        <div class="yc-meta">{% if yc.ngay_moi %}Ngày mới: <strong>{{ yc.ngay_moi|date:"d/m/Y" }}</strong>{% endif %}</div>
+                        <div class="yc-meta">{% if yc.tiet_moi_bat_dau %}Tiết mới: <strong>{{ yc.tiet_moi_bat_dau }}-{{ yc.tiet_moi_ket_thuc }}</strong>{% endif %}</div>
+                        {% if yc.loai_yeu_cau == 'huy_buoi' %}<div style="color:var(--color-danger); font-size: 11px;">(Hủy tiết học)</div>{% endif %}
+                    </td>
+                    <td>
+                        <strong>{{ yc.nguoi_yeu_cau.ho_ten }}</strong>
+                        <div class="yc-meta">{{ yc.ngay_tao|date:"d/m H:i" }}</div>
+                    </td>
+                    <td class="text-center">
+                        {% if yc.trang_thai == 'cho_duyet' %}<span class="badge badge-warning">Chờ duyệt</span>
+                        {% elif yc.trang_thai == 'da_duyet' %}<span class="badge badge-success">Đã duyệt</span>
+                        {% else %}<span class="badge badge-danger">Từ chối</span>{% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="10" class="text-center" style="padding:40px;color:var(--color-text-secondary);">Chưa có yêu cầu nào.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div style="margin-top: 20px;">
+        {% with page_obj=yeu_caus %}{% include 'components/Pagination.html' %}{% endwith %}
+    </div>
+</div>
+{% endblock %}

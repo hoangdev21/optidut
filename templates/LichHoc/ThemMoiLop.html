@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block title %}Thêm Lớp học - OptiDUT{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-content">
+        <h1>Thêm Lớp học mới</h1>
+        <p>Tạo thực thể lớp để gán sinh viên và lịch học.</p>
+    </div>
+</div>
+
+<div class="card">
+    <form method="POST" class="form">
+        {% csrf_token %}
+        <div class="form-grid">
+            <div class="form-group full-width">
+                <label class="form-label">Tên lớp học</label>
+                {{ form.ten_lop }}
+                {{ form.ten_lop.errors }}
+            </div>
+            <div class="form-group">
+                <label class="form-label">Khoa</label>
+                {{ form.khoa }}
+                {{ form.khoa.errors }}
+            </div>
+            <div class="form-group">
+                <label class="form-label">Niên khóa</label>
+                {{ form.nien_khoa }}
+                {{ form.nien_khoa.errors }}
+            </div>
+        </div>
+        
+        <div class="form-actions">
+            <a href="{% url 'danh_sach_lop' %}" class="btn btn-outline">Hủy</a>
+            <button type="submit" class="btn btn-primary">Lưu lớp học</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

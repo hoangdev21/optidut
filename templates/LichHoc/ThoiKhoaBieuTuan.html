@@ -1,0 +1,199 @@
+{% extends 'base.html' %}
+{% block title %}Thời khóa biểu tuần - OptiDUT{% endblock %}
+{% block extra_css %}
+<style>
+    .tkb-wrapper { max-width: 1400px; margin: 0 auto; }
+    .week-nav { display: flex; align-items: center; justify-content: center; gap: 20px; margin-bottom: 25px; padding: 15px; background: #fff; border-radius: 8px; border: 1px solid var(--color-border); }
+    .week-nav .week-label { font-size: 18px; font-weight: 700; color: var(--color-primary); min-width: 280px; text-align: center; }
+    .week-nav .week-label small { display: block; font-size: 12px; font-weight: 400; color: var(--color-text-secondary); margin-top: 2px; }
+    
+    .tkb-container { background: #fff; border-radius: 8px; border: 1px solid var(--color-border); overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.03); }
+    .tkb-grid { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    
+    .tkb-grid th { 
+        background: var(--color-primary); 
+        color: #FFFFFF; 
+        padding: 8px 4px; /* Reduced height */
+        text-align: center; 
+        font-size: 12px; 
+        font-weight: 700; 
+        border-right: 1px solid rgba(255,255,255,0.1);
+        border-bottom: 2px solid rgba(0,0,0,0.1);
+    }
+    .tkb-grid th small { display: block; font-size: 10px; font-weight: 400; color: rgba(255,255,255,0.7); margin-top: 2px; }
+    
+    .tkb-grid td { border: 1px solid var(--color-border); height: 50px; position: relative; font-size: 12px; }
+    
+    /* Session Column */
+    .buoi-col { width: 35px; background: #F8FAFC; color: var(--color-primary); font-weight: 800; font-size: 10px; text-transform: uppercase; writing-mode: vertical-rl; transform: rotate(180deg); text-align: center; border-right: 2px solid var(--color-border) !important; }
+    .tiet-col { width: 45px; background: #FFFFFF; font-weight: 700; color: var(--color-text); text-align: center; }
+    .gio-col { width: 80px; background: #FFFFFF; font-size: 10px; color: var(--color-text-secondary); text-align: center; line-height: 1.4; border-right: 1px solid var(--color-border); }
+
+    .tkb-empty { background: #fff; }
+    .today-col { background: rgba(255, 102, 0, 0.02) !important; }
+    .today-head { background: var(--color-accent) !important; color: #fff !important; }
+    .today-head small { color: #fff !important; opacity: 0.9; }
+
+    /* ── Schedule Card (Technical Minimalist) ── */
+    .tkb-card { 
+        height: calc(100% - 6px); 
+        width: calc(100% - 6px); 
+        margin: 3px;
+        padding: 6px 4px; 
+        display: flex; 
+        flex-direction: column; 
+        justify-content: center; 
+        align-items: center; 
+        background: #FFFFFF;
+        border: 1px solid #E2E8F0;
+        border-radius: 3px; /* Reduced radius */
+        transition: all 0.2s ease;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+        position: relative;
+    }
+
+    /* Ultra-thin side accent for a technical look */
+    .tkb-card::before {
+        content: '';
+        position: absolute;
+        top: 4px;
+        bottom: 4px;
+        left: 0;
+        width: 2px;
+        background: var(--color-primary);
+        border-radius: 0 2px 2px 0;
+    }
+
+    .tkb-card:hover { 
+        border-color: var(--color-primary);
+        box-shadow: 0 4px 12px rgba(0, 51, 102, 0.06);
+        z-index: 10;
+        background: #FDFDFD;
+    }
+    
+    .tkb-mon { 
+        font-weight: 700; 
+        font-size: 11.5px; 
+        color: var(--color-text); 
+        line-height: 1.2; 
+        margin-bottom: 4px;
+        padding: 0 5px;
+    }
+    
+    .tkb-phong { 
+        font-size: 9px; 
+        color: #fff; 
+        background: var(--color-primary); 
+        padding: 1px 6px; 
+        border-radius: 2px; 
+        font-weight: 700; 
+        margin-bottom: 4px; 
+        letter-spacing: 0.3px;
+    }
+    
+    .tkb-gv { 
+        font-size: 10px; 
+        color: #64748B; 
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 90%;
+    }
+    
+    .tkb-footer { 
+        font-size: 9px; 
+        color: #94A3B8; 
+        font-weight: 600; 
+        margin-top: 2px;
+    }
+
+    .tkb-merged-cell { padding: 0 !important; }
+
+    @media (max-width: 1024px) {
+        .tkb-grid { table-layout: auto; min-width: 1000px; }
+        .buoi-col { writing-mode: initial; transform: none; width: auto; height: auto; padding: 10px 0; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="tkb-wrapper">
+    <div class="page-header">
+        <h1 class="page-title"><i class='bx bx-calendar'></i> {% if user.la_sinh_vien %}Thời khóa biểu của tôi{% else %}Lịch dạy của tôi{% endif %}</h1>
+        <div style="display: flex; gap: 10px;">
+            <a href="{% url 'khung_gio_hoc' %}" class="btn btn-outline btn-sm"><i class='bx bx-time-five'></i> Khung giờ</a>
+            <a href="{% url 'danh_sach_lich' %}" class="btn btn-outline btn-sm"><i class='bx bx-list-ul'></i> Danh sách</a>
+        </div>
+    </div>
+
+    <div class="week-nav">
+        <a href="?ngay={{ tuan_truoc|date:'Y-m-d' }}" class="btn btn-outline">◀ Trước</a>
+        <div class="week-label">
+            {{ dau_tuan|date:"d/m" }} — {{ cuoi_tuan|date:"d/m/Y" }}
+            <small>{% if hom_nay >= dau_tuan and hom_nay <= cuoi_tuan %}Tuần hiện tại (Hôm nay: {{ hom_nay|date:"d/m" }}){% endif %}</small>
+        </div>
+        <a href="?ngay={{ tuan_sau|date:'Y-m-d' }}" class="btn btn-outline">Sau ▶</a>
+        <a href="{% url 'thoi_khoa_bieu_tuan' %}" class="btn btn-primary">↩ Tuần này</a>
+    </div>
+
+    <div class="tkb-container" style="overflow-x:auto;">
+        <table class="tkb-grid">
+            <thead>
+                <tr>
+                    <th class="buoi-col">Buổi</th>
+                    <th class="tiet-col">Tiết</th>
+                    <th class="gio-col">Giờ học</th>
+                    {% for d in ds_ngay %}
+                    <th {% if d.ngay == hom_nay %}class="today-head"{% endif %}>
+                        {{ d.ten_thu }}
+                        <small>{{ d.ngay|date:"d/m" }}</small>
+                    </th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in grid_rows %}
+                <tr>
+                    {# Cột Buổi với Rowspan #}
+                    {% if row.tiet == 1 %}
+                        <td rowspan="5" class="buoi-col">Sáng</td>
+                    {% elif row.tiet == 6 %}
+                        <td rowspan="5" class="buoi-col">Chiều</td>
+                    {% elif row.tiet == 11 %}
+                        <td rowspan="5" class="buoi-col">Tối</td>
+                    {% endif %}
+
+                    <td class="tiet-col">{{ row.tiet }}</td>
+                    <td class="gio-col">
+                        {% for t_num, t_info in khung_gio.items %}
+                            {% if t_num == row.tiet %}{{ t_info.bat_dau }} - {{ t_info.ket_thuc }}{% endif %}
+                        {% endfor %}
+                    </td>
+
+                    {% for cell in row.cells %}
+                        {% if cell.type == 'skip' %}
+                            {# Cell covered by rowspan #}
+                        {% elif cell.type == 'start' %}
+                            <td rowspan="{{ cell.rowspan }}" class="tkb-merged-cell {% if cell.lich.ngay_hoc == hom_nay %}today-col{% endif %}">
+                                <div class="tkb-card">
+                                    <div class="tkb-mon" title="{{ cell.lich.mon_hoc }}">{{ cell.lich.mon_hoc }}</div>
+                                    <div class="tkb-phong">{{ cell.lich.phong_hoc.ma_phong }}</div>
+                                    <div class="tkb-gv">
+                                        {% if user.la_sinh_vien %}{{ cell.lich.giang_vien.ho_ten }}{% else %}{{ cell.lich.lop_hoc.ten_lop|default:"-" }}{% endif %}
+                                    </div>
+                                    <div class="tkb-footer">Tiết {{ cell.lich.tiet_bat_dau }}-{{ cell.lich.tiet_ket_thuc }}</div>
+                                </div>
+                            </td>
+                        {% else %}
+                            <td class="tkb-empty {% if cell.ngay == hom_nay %}today-col{% endif %}"></td>
+                        {% endif %}
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+

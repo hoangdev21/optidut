@@ -1,0 +1,63 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Hệ thống tối ưu hóa sử dụng phòng học - Đại học Bách Khoa Đà Nẵng">
+    <title>{% block title %}OptiDUT{% endblock %}</title>
+    
+    <!-- Boxicons CDN -->
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+
+    {% if debug %}
+    <!-- Vite Dev Server -->
+    <script type="module" src="http://localhost:5173/static/js/main.js"></script>
+    <link rel="stylesheet" href="http://localhost:5173/static/css/base.css">
+    <link rel="stylesheet" href="http://localhost:5173/static/css/components.css">
+    <link rel="stylesheet" href="http://localhost:5173/static/css/forms.css">
+    <link rel="stylesheet" href="http://localhost:5173/static/css/tables.css">
+    <link rel="stylesheet" href="http://localhost:5173/static/css/responsive.css">
+    {% else %}
+    <link rel="stylesheet" href="{% static 'css/base.css' %}">
+    <link rel="stylesheet" href="{% static 'css/components.css' %}">
+    <link rel="stylesheet" href="{% static 'css/forms.css' %}">
+    <link rel="stylesheet" href="{% static 'css/tables.css' %}">
+    <link rel="stylesheet" href="{% static 'css/responsive.css' %}">
+    {% endif %}
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    {% block body %}
+    <div class="layout">
+        <!-- Sidebar Overlay (mobile) -->
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+        <!-- Sidebar -->
+        {% include 'components/Sidebar.html' %}
+
+        <!-- Main -->
+        <div class="main-content">
+            <!-- Header -->
+            {% include 'components/Header.html' %}
+
+            <!-- Page Content -->
+            <div class="page-content">
+                {% if messages %}
+                <ul class="messages">
+                    {% for message in messages %}
+                    <li class="message {{ message.tags }}">{{ message }}</li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+
+                {% block content %}{% endblock %}
+            </div>
+        </div>
+    </div>
+    {% endblock %}
+
+    <script src="{% static 'js/main.js' %}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,167 @@
+{% extends 'base.html' %}
+{% block title %}Tạo lịch hàng loạt - OptiDUT{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<style>
+    .schedule-form-wrapper { max-width: 1200px; margin: 20px auto; padding: 0 20px; }
+    .form-section { margin-bottom: 50px; }
+    .form-section-title { font-size: 18px; font-weight: 600; color: var(--color-text); margin-bottom: 24px; display: flex; align-items: center; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--color-border); }
+    .form-section-title i { font-size: 24px; color: var(--color-primary); opacity: 0.8; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-bottom: 24px; }
+    .form-group label { font-weight: 500; color: var(--color-text); font-size: 14px; margin-bottom: 8px; display: block; }
+    .form-actions { display: flex; justify-content: flex-start; gap: 16px; margin-top: 40px; padding-top: 30px; border-top: 1px solid var(--color-border); }
+    .form-actions .btn { padding: 10px 24px; font-size: 15px; }
+    .thu-checkboxes { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
+    .thu-checkbox { display: flex; align-items: center; gap: 6px; padding: 8px 16px; border: 1px solid var(--color-border); border-radius: 4px; cursor: pointer; transition: all 0.2s; font-size: 14px; }
+    .thu-checkbox:hover { border-color: var(--color-primary); background: rgba(0,51,102,0.03); }
+    .thu-checkbox input:checked + span { color: var(--color-primary); font-weight: 600; }
+    .thu-checkbox input { accent-color: var(--color-primary); }
+    .info-box { background: #f0f5ff; border: 1px solid #d0e0f0; padding: 16px; border-radius: 4px; margin-bottom: 24px; font-size: 14px; color: var(--color-text-secondary); }
+    .info-box i { color: var(--color-primary); margin-right: 6px; }
+    .select2-container--default .select2-selection--single { height: 42px; border: 1px solid var(--color-border); border-radius: 6px; display: flex; align-items: center; }
+    .select2-container--default .select2-selection--single .select2-selection__rendered { padding-left: 14px; color: var(--color-text); font-size: 14px; }
+    .select2-container--default .select2-selection--single .select2-selection__arrow { height: 40px; right: 12px; }
+    .select2-dropdown { border: 1px solid var(--color-border); border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); z-index: 1050; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-content">
+        <h1 class="page-title">Tạo lịch học hàng loạt</h1>
+        <p>Tạo lịch lặp theo tuần — chọn thứ, khoảng ngày, hệ thống tự kiểm tra xung đột.</p>
+    </div>
+</div>
+
+<div class="schedule-form-wrapper">
+    <div class="info-box">
+        <i class='bx bx-info-circle'></i>
+        Chế độ hàng loạt sẽ tạo lịch cho <strong>tất cả các ngày phù hợp</strong> trong khoảng thời gian bạn chọn. 
+        Nếu phòng hoặc giảng viên bị trùng, lịch ngày đó sẽ bị bỏ qua tự động.
+    </div>
+
+    {% if form.errors %}
+    <div class="form-errors">
+        <div style="font-weight: 600; margin-bottom: 8px;"><i class='bx bx-error-circle'></i> Vui lòng kiểm tra lại:</div>
+        {% if form.non_field_errors %}
+            {% for e in form.non_field_errors %}<p>{{ e }}</p>{% endfor %}
+        {% endif %}
+        <ul>
+            {% for field, errors in form.errors.items %}
+                {% if field != '__all__' %}
+                    {% for e in errors %}<li>{{ field }}: {{ e }}</li>{% endfor %}
+                {% endif %}
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <form method="post">
+        {% csrf_token %}
+
+        <!-- Section 1: Thông tin môn & lớp -->
+        <div class="form-section">
+            <div class="form-section-title"><i class='bx bx-book-bookmark'></i> 1. Thông tin Khóa học</div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Tên môn học <span style="color:var(--color-danger)">*</span></label>
+                    {{ form.mon_hoc }}
+                    <datalist id="mon_hoc_list">
+                        {% for m in ds_mon_hoc %}{% if m %}<option value="{{ m }}"></option>{% endif %}{% endfor %}
+                    </datalist>
+                </div>
+                <div class="form-group">
+                    <label>Chọn lớp học <span style="color:var(--color-danger)">*</span></label>
+                    {{ form.lop_hoc }}
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Giảng viên phụ trách <span style="color:var(--color-danger)">*</span></label>
+                    {{ form.giang_vien }}
+                </div>
+                <div class="form-group">
+                    <label>Sĩ số dự kiến</label>
+                    {{ form.si_so }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 2: Lịch lặp -->
+        <div class="form-section">
+            <div class="form-section-title"><i class='bx bx-repeat'></i> 2. Lịch lặp theo tuần</div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Ngày bắt đầu <span style="color:var(--color-danger)">*</span></label>
+                    <input type="date" name="ngay_bat_dau" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label>Ngày kết thúc <span style="color:var(--color-danger)">*</span></label>
+                    <input type="date" name="ngay_ket_thuc" class="form-input" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Chọn thứ học trong tuần <span style="color:var(--color-danger)">*</span></label>
+                <div class="thu-checkboxes">
+                    <label class="thu-checkbox"><input type="checkbox" name="thu_trong_tuan" value="0"><span>Thứ 2</span></label>
+                    <label class="thu-checkbox"><input type="checkbox" name="thu_trong_tuan" value="1"><span>Thứ 3</span></label>
+                    <label class="thu-checkbox"><input type="checkbox" name="thu_trong_tuan" value="2"><span>Thứ 4</span></label>
+                    <label class="thu-checkbox"><input type="checkbox" name="thu_trong_tuan" value="3"><span>Thứ 5</span></label>
+                    <label class="thu-checkbox"><input type="checkbox" name="thu_trong_tuan" value="4"><span>Thứ 6</span></label>
+                    <label class="thu-checkbox"><input type="checkbox" name="thu_trong_tuan" value="5"><span>Thứ 7</span></label>
+                    <label class="thu-checkbox"><input type="checkbox" name="thu_trong_tuan" value="6"><span>CN</span></label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 3: Phòng & Tiết -->
+        <div class="form-section">
+            <div class="form-section-title"><i class='bx bx-calendar-event'></i> 3. Phòng học & Tiết</div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Phòng học <span style="color:var(--color-danger)">*</span></label>
+                    {{ form.phong_hoc }}
+                </div>
+                <div class="form-group" style="display:none;">
+                    <label>Ngày học (ẩn)</label>
+                    {{ form.ngay_hoc }}
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Tiết bắt đầu (1-14) <span style="color:var(--color-danger)">*</span></label>
+                    {{ form.tiet_bat_dau }}
+                </div>
+                <div class="form-group">
+                    <label>Tiết kết thúc (1-14) <span style="color:var(--color-danger)">*</span></label>
+                    {{ form.tiet_ket_thuc }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 4: Ghi chú -->
+        <div class="form-section">
+            <div class="form-section-title"><i class='bx bx-note'></i> 4. Ghi chú</div>
+            <div class="form-group">
+                <label>Ghi chú (Không bắt buộc)</label>
+                {{ form.ghi_chu }}
+            </div>
+            <div class="form-actions">
+                <a href="{% url 'danh_sach_lich' %}" class="btn btn-outline">Hủy bỏ</a>
+                <button type="submit" class="btn btn-primary"><i class='bx bx-calendar-plus'></i> Tạo lịch hàng loạt</button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        $('.form-select').select2({ width: '100%', language: { noResults: function() { return "Không tìm thấy"; } } });
+    });
+</script>
+{% endblock %}

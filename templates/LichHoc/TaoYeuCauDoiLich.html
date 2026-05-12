@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+{% block title %}Yêu cầu đổi lịch - OptiDUT{% endblock %}
+{% block extra_css %}
+<style>
+    .yc-form { max-width: 800px; margin: 0 auto; }
+    .lich-info { background: #f8f9fa; border: 1px solid var(--color-border); border-radius: 6px; padding: 16px 20px; margin-bottom: 24px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    .lich-info .info-item { font-size: 13px; }
+    .lich-info .info-label { font-size: 11px; color: var(--color-text-secondary); text-transform: uppercase; margin-bottom: 2px; }
+    .lich-info .info-val { font-weight: 600; color: var(--color-text); }
+    .form-section { margin-bottom: 24px; }
+    .form-section-title { font-size: 15px; font-weight: 600; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--color-border); }
+    .loai-options { display: flex; gap: 12px; flex-wrap: wrap; }
+    .loai-option { display: flex; align-items: center; gap: 8px; padding: 10px 16px; border: 1px solid var(--color-border); border-radius: 6px; cursor: pointer; transition: all 0.15s; font-size: 13px; }
+    .loai-option:hover { border-color: var(--color-primary); }
+    .loai-option input:checked + span { color: var(--color-primary); font-weight: 600; }
+    .loai-option input { accent-color: var(--color-primary); }
+    .conditional-fields { display: none; margin-top: 16px; padding: 16px; background: #fafbfc; border-radius: 6px; border: 1px solid #eee; }
+    .conditional-fields.active { display: block; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="yc-form">
+    <div class="page-header"><h1 class="page-title"><i class='bx bx-git-pull-request'></i> Yêu cầu đổi lịch</h1></div>
+
+    <!-- Thông tin lịch gốc -->
+    <div class="lich-info">
+        <div class="info-item"><div class="info-label">Môn học</div><div class="info-val">{{ lich.mon_hoc }}</div></div>
+        <div class="info-item"><div class="info-label">Lớp</div><div class="info-val">{{ lich.lop_hoc.ten_lop|default:"-" }}</div></div>
+        <div class="info-item"><div class="info-label">Phòng hiện tại</div><div class="info-val">{{ lich.phong_hoc.ma_phong }}</div></div>
+        <div class="info-item"><div class="info-label">Ngày</div><div class="info-val">{{ lich.ngay_hoc|date:"d/m/Y" }}</div></div>
+        <div class="info-item"><div class="info-label">Tiết</div><div class="info-val">{{ lich.tiet_bat_dau }} - {{ lich.tiet_ket_thuc }}</div></div>
+        <div class="info-item"><div class="info-label">Trạng thái</div><div class="info-val"><span class="badge badge-success">{{ lich.get_trang_thai_display }}</span></div></div>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-section">
+            <div class="form-section-title">1. Loại yêu cầu</div>
+            <div class="loai-options">
+                <label class="loai-option"><input type="radio" name="loai_yeu_cau" value="doi_phong" onchange="toggleFields(this.value)"><span>Đổi phòng học</span></label>
+                <label class="loai-option"><input type="radio" name="loai_yeu_cau" value="doi_gio" onchange="toggleFields(this.value)"><span>Đổi giờ/tiết</span></label>
+                <label class="loai-option"><input type="radio" name="loai_yeu_cau" value="huy_buoi" onchange="toggleFields(this.value)"><span>Hủy buổi học</span></label>
+                <label class="loai-option"><input type="radio" name="loai_yeu_cau" value="khac" onchange="toggleFields(this.value)"><span>Khác</span></label>
+            </div>
+        </div>
+
+        <!-- Đổi phòng fields -->
+        <div id="fields-doi_phong" class="conditional-fields">
+            <div class="form-group">
+                <label>Chọn phòng mới</label>
+                <select name="phong_moi" class="form-select">
+                    <option value="">-- Chọn phòng --</option>
+                    {% for p in phong_trong %}
+                    <option value="{{ p.pk }}">{{ p.ma_phong }} ({{ p.get_loai_phong_display }} - {{ p.suc_chua }} chỗ) {% if p.trang_thai == 'dang_su_dung' %}⚠ Đang dùng{% endif %}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <!-- Đổi giờ fields -->
+        <div id="fields-doi_gio" class="conditional-fields">
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
+                <div class="form-group"><label>Ngày mới</label><input type="date" name="ngay_moi" class="form-input"></div>
+                <div class="form-group"><label>Tiết bắt đầu mới</label><input type="number" name="tiet_moi_bat_dau" min="1" max="14" class="form-input"></div>
+                <div class="form-group"><label>Tiết kết thúc mới</label><input type="number" name="tiet_moi_ket_thuc" min="1" max="14" class="form-input"></div>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <div class="form-section-title">2. Lý do</div>
+            <div class="form-group">
+                <textarea name="ly_do" class="form-input" rows="4" placeholder="Nhập lý do yêu cầu đổi lịch..." required></textarea>
+            </div>
+        </div>
+
+        <div style="display:flex; gap:12px; margin-top:20px;">
+            <a href="{% url 'danh_sach_lich' %}" class="btn btn-outline">← Quay lại</a>
+            <button type="submit" class="btn btn-primary"><i class='bx bx-send'></i> Gửi yêu cầu</button>
+        </div>
+    </form>
+</div>
+<script>
+function toggleFields(val) {
+    document.querySelectorAll('.conditional-fields').forEach(f => f.classList.remove('active'));
+    const el = document.getElementById('fields-' + val);
+    if (el) el.classList.add('active');
+}
+</script>
+{% endblock %}

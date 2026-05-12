@@ -1,0 +1,281 @@
+{% extends 'base.html' %}
+{% block title %}Lịch học - OptiDUT{% endblock %}
+{% block extra_css %}
+<style>
+    .schedule-wrapper { max-width: 1600px; margin: 0 auto; padding-bottom: 60px; }
+    .day-nav { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+    .day-nav .btn { padding: 8px 16px; font-size: 13px; }
+    .day-nav .current-day { font-size: 18px; font-weight: 600; color: var(--color-text); min-width: 260px; text-align: center; }
+    .day-nav .current-day small { display: block; font-size: 13px; font-weight: 400; color: var(--color-text-secondary); }
+    .day-nav .today-tag { background: var(--color-success); color: #fff; font-size: 11px; padding: 2px 8px; border-radius: 3px; margin-left: 8px; vertical-align: middle; }
+    .gio-col { font-size: 12px; color: var(--color-text-secondary); }
+    .schedule-filter { border-radius: 2px; box-shadow: none; flex-wrap: nowrap; overflow-x: auto; gap: 12px; }
+    .schedule-filter .filter-group { min-width: 140px; }
+    .schedule-filter .filter-group label { white-space: nowrap; }
+    .schedule-filter .form-input,
+    .schedule-filter .form-select { height: 38px; padding: 8px 12px; font-size: 13px; }
+    .schedule-filter .filter-group .btn { height: 38px; }
+    .data-table tbody tr:nth-child(even) { background: #F8FBFF; }
+    .data-table tbody tr:hover { background: #EAF2FF; }
+    .report-panel { background: var(--color-white); border: 1px solid var(--color-border); border-radius: 2px; padding: 16px; margin: 12px 0 16px; }
+    .report-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 10px; }
+    .report-title { font-size: 14px; font-weight: 600; color: var(--color-primary); }
+    .report-meta { font-size: 12px; color: var(--color-text-secondary); }
+    .report-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 12px; }
+    .report-grid .form-group { margin-bottom: 10px; }
+    .report-actions { display: flex; gap: 10px; align-items: center; }
+    .report-grid { grid-template-columns: 1.1fr 0.9fr; gap: 16px; }
+    .info-block { margin-bottom: 12px; }
+    .info-title { font-size: 13px; font-weight: 600; color: var(--color-primary); margin-bottom: 6px; }
+    .info-row { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; padding: 4px 0; border-bottom: 1px dashed var(--color-border); }
+    .info-row:last-child { border-bottom: none; }
+    .info-label { color: var(--color-text-secondary); }
+    .info-value { color: var(--color-text); font-weight: 500; text-align: right; }
+    .equip-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .equip-table th, .equip-table td { border: 1px solid var(--color-border); padding: 6px 8px; }
+    .equip-table thead { background: #F5F7FA; }
+    .text-center { text-align: center; }
+    @media (max-width: 992px) {
+        .report-grid { grid-template-columns: 1fr; }
+    }
+</style>
+{% endblock %}
+{% block content %}
+<div class="schedule-wrapper">
+    <div class="page-header">
+        <h1 class="page-title">{% if user.la_giang_vien %}Lịch dạy của tôi{% else %}Danh sách lịch học{% endif %}</h1>
+        {% if user.la_giao_vu %}
+        <div style="display:flex;gap:8px;">
+            <a href="{% url 'them_lich' %}" class="btn btn-accent">+ Thêm lịch</a>
+            <a href="{% url 'them_lich_hang_loat' %}" class="btn btn-primary"><i class='bx bx-calendar-plus'></i> Tạo hàng loạt</a>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Day Navigation -->
+    <div class="day-nav">
+        <a href="?ngay={{ ngay_truoc|date:'Y-m-d' }}{% for key, value in request.GET.items %}{% if key != 'ngay' and key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="btn btn-outline">◀ Hôm trước</a>
+        <div class="current-day">
+            {{ ten_thu }}, {{ ngay_hien_tai|date:"d/m/Y" }}
+            {% if ngay_hien_tai == hom_nay %}<span class="today-tag">Hôm nay</span>{% endif %}
+            <small>{{ lich_hocs.paginator.count }} lịch học</small>
+        </div>
+        <a href="?ngay={{ ngay_sau|date:'Y-m-d' }}{% for key, value in request.GET.items %}{% if key != 'ngay' and key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="btn btn-outline">Hôm sau ▶</a>
+        {% if ngay_hien_tai != hom_nay %}
+        <a href="?ngay={{ hom_nay|date:'Y-m-d' }}{% for key, value in request.GET.items %}{% if key != 'ngay' and key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="btn btn-primary" style="font-size:12px;">↩ Về hôm nay</a>
+        {% endif %}
+    </div>
+
+    <form method="get" class="filter-bar schedule-filter">
+        <div class="filter-group">
+            <label>Ngày</label>
+            <input type="date" name="ngay" value="{{ ngay_hien_tai|date:'Y-m-d' }}" class="form-input">
+        </div>
+        <div class="filter-group">
+            <label>Tìm kiếm</label>
+            <input type="text" name="q" value="{{ tu_khoa }}" class="form-input" placeholder="Tìm theo môn học...">
+        </div>
+        <div class="filter-group">
+            <label>Phòng</label>
+            <select name="phong" class="form-select">
+                <option value="">Tất cả</option>
+                {% for phong_id, ma_phong in ds_phong %}
+                <option value="{{ phong_id }}" {% if phong_loc == phong_id|stringformat:'s' %}selected{% endif %}>{{ ma_phong }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>Lớp</label>
+            <select name="lop" class="form-select">
+                <option value="">Tất cả</option>
+                {% for lop_id, ten_lop in ds_lop %}
+                <option value="{{ lop_id }}" {% if lop_loc == lop_id|stringformat:'s' %}selected{% endif %}>{{ ten_lop }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>Buổi</label>
+            <select name="buoi" class="form-select">
+                <option value="">Tất cả</option>
+                <option value="sang" {% if buoi_loc == 'sang' %}selected{% endif %}>Buổi sáng</option>
+                <option value="chieu" {% if buoi_loc == 'chieu' %}selected{% endif %}>Buổi chiều</option>
+                <option value="toi" {% if buoi_loc == 'toi' %}selected{% endif %}>Buổi tối</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>Tiết</label>
+            <select name="tiet" class="form-select">
+                <option value="">Tất cả</option>
+                {% for t in tiet_choices %}
+                <option value="{{ t }}" {% if tiet_loc == t|stringformat:'s' %}selected{% endif %}>Tiết {{ t }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>Trạng thái</label>
+            <select name="trang_thai" class="form-select">
+                <option value="">Tất cả</option>
+                <option value="hoat_dong" {% if trang_thai_loc == 'hoat_dong' %}selected{% endif %}>Hoạt động</option>
+                <option value="da_huy" {% if trang_thai_loc == 'da_huy' %}selected{% endif %}>Đã hủy</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>Hiển thị</label>
+            <select name="page_size" class="form-select" onchange="this.form.submit()">
+                <option value="10" {% if request.GET.page_size == '10' %}selected{% endif %}>10</option>
+                <option value="20" {% if request.GET.page_size == '20' or not request.GET.page_size %}selected{% endif %}>20</option>
+                <option value="30" {% if request.GET.page_size == '30' %}selected{% endif %}>30</option>
+                <option value="50" {% if request.GET.page_size == '50' %}selected{% endif %}>50</option>
+                <option value="70" {% if request.GET.page_size == '70' %}selected{% endif %}>70</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>&nbsp;</label>
+            <button type="submit" class="btn btn-primary">Lọc</button>
+        </div>
+    </form>
+
+    {% if bao_hong_lich and bao_hong_form %}
+    <div class="report-panel">
+        <div class="report-head">
+            <div>
+                <div class="report-title">Báo hỏng thiết bị tại phòng {{ bao_hong_lich.phong_hoc.ma_phong }}</div>
+                <div class="report-meta">Vui lòng kiểm tra đúng lịch và thiết bị trước khi gửi.</div>
+            </div>
+            <a href="?ngay={{ ngay_hien_tai|date:'Y-m-d' }}{% for key, value in request.GET.items %}{% if key != 'bao_hong' and key != 'page' and key != 'ngay' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="btn btn-outline">Đóng</a>
+        </div>
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="bao_hong_submit" value="1">
+            <input type="hidden" name="bao_hong_lich_id" value="{{ bao_hong_lich.id }}">
+            <input type="hidden" name="ngay" value="{{ ngay_hien_tai|date:'Y-m-d' }}">
+            <div class="report-grid">
+                <div>
+                    <div class="form-group">
+                        <label class="form-label">Thiết bị</label>
+                        {{ bao_hong_form.thiet_bi }}
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Mô tả lỗi</label>
+                        {{ bao_hong_form.mo_ta }}
+                    </div>
+                    {% if bao_hong_form.errors %}
+                    <div class="form-errors"><ul>{% for field, errors in bao_hong_form.errors.items %}{% for e in errors %}<li>{{ e }}</li>{% endfor %}{% endfor %}</ul></div>
+                    {% endif %}
+                    <div class="report-actions" style="margin-top:12px;">
+                        <button type="submit" class="btn btn-danger">Gửi báo hỏng</button>
+                        <a href="?ngay={{ ngay_hien_tai|date:'Y-m-d' }}" class="btn btn-outline">Hủy</a>
+                    </div>
+                </div>
+                <div>
+                    <div class="info-block">
+                        <div class="info-title">Thông tin lịch</div>
+                        <div class="info-row"><span class="info-label">Môn học</span><span class="info-value">{{ bao_hong_lich.mon_hoc }}</span></div>
+                        <div class="info-row"><span class="info-label">Ngày học</span><span class="info-value">{{ bao_hong_lich.ngay_hoc|date:"d/m/Y" }}</span></div>
+                        <div class="info-row"><span class="info-label">Tiết</span><span class="info-value">{{ bao_hong_lich.tiet_bat_dau }}-{{ bao_hong_lich.tiet_ket_thuc }}</span></div>
+                        <div class="info-row"><span class="info-label">Lớp</span><span class="info-value">{{ bao_hong_lich.lop_hoc.ten_lop|default:bao_hong_lich.ma_lop|default:"-" }}</span></div>
+                        <div class="info-row"><span class="info-label">Người báo</span><span class="info-value">{{ user.ho_ten }}</span></div>
+                    </div>
+                    <div class="info-block">
+                        <div class="info-title">Thiết bị trong phòng</div>
+                        <table class="equip-table">
+                            <thead>
+                                <tr>
+                                    <th>Thiết bị</th>
+                                    <th class="text-center">SL</th>
+                                    <th class="text-center">Trạng thái</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for tb in ds_thiet_bi_phong %}
+                                <tr>
+                                    <td>{{ tb.ten_thiet_bi }}</td>
+                                    <td class="text-center">{{ tb.so_luong }}</td>
+                                    <td class="text-center">
+                                        {% if tb.trang_thai == 'hoat_dong' %}Hoạt động
+                                        {% elif tb.trang_thai == 'hong' %}Hỏng
+                                        {% else %}Bảo trì{% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="3" class="text-center">Chưa có thiết bị.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+    {% endif %}
+
+    <div class="table-container">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Mã lớp</th>
+                <th>Môn học</th>
+                {% if not user.la_giang_vien %}<th>Giảng viên</th>{% endif %}
+                <th>Phòng</th>
+                <th>Tiết</th>
+                <th>Giờ học</th>
+                <th>Trạng thái</th>
+                {% if user.la_giao_vu %}<th>Hành động</th>{% elif user.la_giang_vien %}<th>Yêu cầu</th>{% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for l in lich_hocs %}
+            <tr>
+                <td><span class="badge badge-outline">{{ l.lop_hoc.ten_lop|default:l.ma_lop|default:"-" }}</span></td>
+                <td>{{ l.mon_hoc }}</td>
+                {% if not user.la_giang_vien %}<td>{{ l.giang_vien.ho_ten }}</td>{% endif %}
+                <td><span style="color: #000; font-weight: 700;">{{ l.phong_hoc.ma_phong }}</span></td>
+                <td>{{ l.tiet_bat_dau }} - {{ l.tiet_ket_thuc }}</td>
+                <td class="gio-col">
+                    {% with bd=l.tiet_bat_dau kt=l.tiet_ket_thuc %}
+                        {% for tiet_num, info in khung_gio.items %}
+                            {% if tiet_num == bd %}{{ info.bat_dau }}{% endif %}
+                        {% endfor %}
+                         - 
+                        {% for tiet_num, info in khung_gio.items %}
+                            {% if tiet_num == kt %}{{ info.ket_thuc }}{% endif %}
+                        {% endfor %}
+                    {% endwith %}
+                </td>
+                <td>
+                    {% if l.trang_thai == 'hoat_dong' %}
+                    <span class="badge badge-success">Hoạt động</span>
+                    {% else %}
+                    <span class="badge badge-danger">Đã hủy</span>
+                    {% endif %}
+                </td>
+                {% if user.la_giao_vu %}
+                <td>
+                    <div class="table-actions">
+                        <a href="{% url 'chinh_sua_lich' l.pk %}" class="btn btn-sm btn-primary">Sửa</a>
+                        {% if l.trang_thai == 'hoat_dong' %}
+                        <a href="{% url 'huy_lich' l.pk %}" class="btn btn-sm btn-danger">Hủy</a>
+                        {% endif %}
+                        <a href="?ngay={{ ngay_hien_tai|date:'Y-m-d' }}&bao_hong={{ l.id }}{% for key, value in request.GET.items %}{% if key != 'bao_hong' and key != 'page' and key != 'ngay' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="btn btn-sm btn-outline">Báo hỏng</a>
+                    </div>
+                </td>
+                {% elif user.la_giang_vien and l.giang_vien == user %}
+                <td>
+                    <a href="{% url 'tao_yeu_cau_doi_lich' l.pk %}" class="btn btn-sm btn-outline" title="Yêu cầu đổi lịch">
+                        <i class='bx bx-git-pull-request'></i> Đổi
+                    </a>
+                    <a href="?ngay={{ ngay_hien_tai|date:'Y-m-d' }}&bao_hong={{ l.id }}{% for key, value in request.GET.items %}{% if key != 'bao_hong' and key != 'page' and key != 'ngay' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="btn btn-sm btn-outline" title="Báo hỏng thiết bị">
+                        <i class='bx bx-error-circle'></i> Báo hỏng
+                    </a>
+                </td>
+                {% endif %}
+            </tr>
+            {% empty %}
+            <tr><td colspan="{% if user.la_giao_vu %}8{% else %}7{% endif %}" class="empty-state">Không có lịch học nào trong ngày này.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% with page_obj=lich_hocs %}{% include 'components/Pagination.html' %}{% endwith %}
+</div>
+{% endblock %}

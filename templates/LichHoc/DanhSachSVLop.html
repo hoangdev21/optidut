@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% block title %}Sinh viên lớp {{ lop.ten_lop }} - OptiDUT{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div class="header-content">
+        <h1 class="page-title">Lớp học phần: {{ lop.ten_lop }}</h1>
+        <p>{{ lop.khoa|default:"" }} {% if lop.nien_khoa %}• Niên khóa: {{ lop.nien_khoa }}{% endif %}</p>
+    </div>
+    {% if user.la_giao_vu %}
+    <a href="{% url 'them_sv_vao_lop' lop.pk %}" class="btn btn-accent">+ Thêm sinh viên</a>
+    {% endif %}
+</div>
+
+<!-- Lịch học của lớp -->
+{% if lich_hocs %}
+<div style="margin-bottom: 24px;">
+    <h3 style="font-size: 16px; margin-bottom: 12px; color: var(--color-text);"><i class='bx bx-calendar'></i> Lịch học</h3>
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Môn học</th>
+                    <th>Giảng viên</th>
+                    <th>Phòng</th>
+                    <th>Ngày</th>
+                    <th>Tiết</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for l in lich_hocs %}
+                <tr>
+                    <td>{{ l.mon_hoc }}</td>
+                    <td>{{ l.giang_vien.ho_ten }}</td>
+                    <td><span style="color: #000; font-weight: 700;">{{ l.phong_hoc.ma_phong }}</span></td>
+                    <td>{{ l.ngay_hoc|date:"d/m/Y" }}</td>
+                    <td>{{ l.tiet_bat_dau }} - {{ l.tiet_ket_thuc }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- Danh sách sinh viên -->
+<h3 style="font-size: 16px; margin-bottom: 12px; color: var(--color-text);"><i class='bx bx-group'></i> Danh sách sinh viên ({{ dang_ky_list|length }})</h3>
+<div class="table-container">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th style="width:50px;">STT</th>
+                <th>MSSV</th>
+                <th>Họ và tên</th>
+                <th>Email</th>
+                <th>Ngày đăng ký</th>
+                {% if user.la_giao_vu %}<th>Hành động</th>{% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for dk in dang_ky_list %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td><span class="badge badge-outline">{{ dk.sinh_vien.ma_so|default:"-" }}</span></td>
+                <td>{{ dk.sinh_vien.ho_ten }}</td>
+                <td>{{ dk.sinh_vien.email|default:"-" }}</td>
+                <td>{{ dk.ngay_dang_ky|date:"d/m/Y H:i" }}</td>
+                {% if user.la_giao_vu %}
+                <td>
+                    <form method="post" action="{% url 'xoa_sv_khoi_lop' lop.pk dk.sinh_vien.pk %}" style="display:inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Xóa sinh viên này khỏi lớp?')">Xóa</button>
+                    </form>
+                </td>
+                {% endif %}
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="empty-state">Chưa có sinh viên nào đăng ký lớp này.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div style="margin-top: 16px;">
+    <a href="{% url 'danh_sach_lop' %}" class="btn btn-outline">← Quay lại danh sách lớp</a>
+</div>
+{% endblock %}

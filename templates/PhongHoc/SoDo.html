@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Sơ đồ tòa nhà - OptiDUT{% endblock %}
+
+{% block extra_css %}
+<style>
+    .map-wrapper {
+        display: flex;
+        justify-content: center;
+        padding: 30px 0;
+    }
+    .map-container {
+        display: flex;
+        flex-direction: column;
+        gap: 50px;
+        width: 100%;
+    }
+    .map-card {
+        background: var(--color-white);
+        border: 1px solid var(--color-border);
+        border-radius: 0;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+    }
+    .map-header {
+        background: #F8F9FA;
+        color: var(--color-primary);
+        padding: 20px 30px;
+        font-size: 18px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        border-bottom: 1px solid var(--color-border);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .map-header i {
+        font-size: 24px;
+        color: var(--color-accent);
+    }
+    .map-content {
+        padding: 40px;
+        text-align: center;
+        background: var(--color-white);
+        overflow-x: auto;
+    }
+    .map-image {
+        display: block;
+        margin: 0 auto;
+        border-radius: 0;
+        border: 1px solid var(--color-border);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-content">
+        <h1 class="page-title">Sơ đồ khuôn viên trường</h1>
+        <p>Tham khảo sơ đồ chi tiết các tòa nhà và phòng học tại Đại học Bách Khoa.</p>
+    </div>
+    <div class="header-actions">
+        <a href="{% url 'danh_sach_phong' %}" class="btn btn-outline">
+            <i class='bx bx-arrow-back'></i> Quay lại danh sách
+        </a>
+    </div>
+</div>
+
+<div class="map-wrapper">
+    <div class="map-container">
+        <div class="map-card">
+            <div class="map-header">
+                <i class='bx bx-map-pin'></i> Sơ đồ trường
+            </div>
+            <div class="map-content">
+                <img src="{% static 'img/Sodo1.png' %}" alt="Sơ đồ 1" class="map-image">
+            </div>
+            <div class="map-content">
+                <img src="{% static 'img/Sodo2.png' %}" alt="Sơ đồ 2" class="map-image">
+            </div>
+        </div>
+        
+    </div>
+</div>
+{% endblock %}

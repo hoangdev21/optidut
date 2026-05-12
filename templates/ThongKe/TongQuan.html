@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+{% block title %}Thống kê - OptiDUT{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">📊 Thống kê tổng quan</h1>
+    <a href="{% url 'xuat_bao_cao' %}" class="btn btn-accent">📥 Xuất báo cáo CSV</a>
+</div>
+
+<div class="card-grid">
+    <div class="stat-card">
+        <span class="stat-number">{{ tong_phong }}</span>
+        <span class="stat-label">Tổng phòng học</span>
+    </div>
+    <div class="stat-card success">
+        <span class="stat-number">{{ phong_trong }}</span>
+        <span class="stat-label">Phòng trống</span>
+    </div>
+    <div class="stat-card accent">
+        <span class="stat-number">{{ phong_dang_dung }}</span>
+        <span class="stat-label">Phòng đang dùng</span>
+    </div>
+    <div class="stat-card warning">
+        <span class="stat-number">{{ phong_bao_tri }}</span>
+        <span class="stat-label">Phòng bảo trì</span>
+    </div>
+</div>
+
+<div class="stat-card" style="text-align:left; margin-bottom:16px;">
+    <span class="stat-label">Lịch học trong 7 ngày qua</span>
+    <span class="stat-number" style="font-size:24px;">{{ lich_tuan_nay }}</span>
+</div>
+
+<!-- Phòng sử dụng nhiều nhất -->
+<div class="card">
+    <h2 style="font-size:16px; color:var(--color-primary); margin-bottom:12px;">Top 10 phòng sử dụng nhiều nhất</h2>
+    <div class="table-container" style="border:none;">
+        <table class="data-table">
+            <thead><tr><th>STT</th><th>Mã phòng</th><th>Tên phòng</th><th>Tòa nhà</th><th>Số lần sử dụng</th></tr></thead>
+            <tbody>
+                {% for p in phong_nhieu_nhat %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td><strong>{{ p.ma_phong }}</strong></td>
+                    <td>{{ p.ten_phong }}</td>
+                    <td>{{ p.toa_nha }}</td>
+                    <td><span class="badge badge-accent">{{ p.so_lan_dung }}</span></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="empty-state">Chưa có dữ liệu.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Phòng ít sử dụng -->
+<div class="card">
+    <h2 style="font-size:16px; color:var(--color-primary); margin-bottom:12px;">Top 10 phòng ít sử dụng nhất</h2>
+    <div class="table-container" style="border:none;">
+        <table class="data-table">
+            <thead><tr><th>STT</th><th>Mã phòng</th><th>Tên phòng</th><th>Tòa nhà</th><th>Số lần sử dụng</th></tr></thead>
+            <tbody>
+                {% for p in phong_it_dung %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td><strong>{{ p.ma_phong }}</strong></td>
+                    <td>{{ p.ten_phong }}</td>
+                    <td>{{ p.toa_nha }}</td>
+                    <td><span class="badge badge-warning">{{ p.so_lan_dung }}</span></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="empty-state">Chưa có dữ liệu.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Thiết bị hỏng -->
+{% if thiet_bi_hong %}
+<div class="card">
+    <h2 style="font-size:16px; color:var(--color-danger); margin-bottom:12px;">⚠ Thiết bị đang hỏng</h2>
+    <div class="table-container" style="border:none;">
+        <table class="data-table">
+            <thead><tr><th>Thiết bị</th><th>Phòng</th><th>Ghi chú</th></tr></thead>
+            <tbody>
+                {% for tb in thiet_bi_hong %}
+                <tr>
+                    <td>{{ tb.ten_thiet_bi }}</td>
+                    <td><span style="color: #000; font-weight: 700;">{{ tb.phong_hoc.ma_phong }}</span></td>
+                    <td>{{ tb.ghi_chu|default:"-" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

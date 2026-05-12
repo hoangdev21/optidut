@@ -1,0 +1,54 @@
+/* ══════════════════════════════════════
+   TABLES.CSS - Data tables
+   ══════════════════════════════════════ */
+
+.table-container {
+    background: var(--color-white);
+    border: 1px solid var(--color-border);
+    border-radius: 1px;
+    overflow-x: auto;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--font-size-sm);
+}
+
+.data-table thead {
+    background: var(--color-primary);
+    color: var(--color-white);
+}
+
+.data-table th {
+    padding: 14px 20px;
+    text-align: left;
+    font-weight: 600;
+    white-space: nowrap;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.data-table td {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--color-border);
+    vertical-align: middle;
+}
+
+.data-table tbody tr:hover {
+    background: #F8F9FA;
+}
+
+.data-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.table-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.table-actions .btn-sm {
+    white-space: nowrap;
+}

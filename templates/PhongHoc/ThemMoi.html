@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block title %}Thêm phòng - OptiDUT{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Thêm phòng học mới</h1>
+</div>
+<div class="form-container">
+    {% if form.errors %}<div class="form-errors"><ul>{% for field, errors in form.errors.items %}{% for e in errors %}<li>{{ e }}</li>{% endfor %}{% endfor %}</ul></div>{% endif %}
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-row">
+            <div class="form-group"><label class="form-label">Mã phòng</label>{{ form.ma_phong }}</div>
+            <div class="form-group"><label class="form-label">Tên phòng</label>{{ form.ten_phong }}</div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label class="form-label">Tòa nhà</label>{{ form.toa_nha }}</div>
+            <div class="form-group"><label class="form-label">Sức chứa</label>{{ form.suc_chua }}</div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label class="form-label">Loại phòng</label>{{ form.loai_phong }}</div>
+            <div class="form-group"><label class="form-label">Trạng thái</label>{{ form.trang_thai }}</div>
+        </div>
+        <div class="form-group"><label class="form-label">Ghi chú</label>{{ form.ghi_chu }}</div>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-accent">Thêm phòng</button>
+            <a href="{% url 'danh_sach_phong' %}" class="btn btn-outline">Hủy</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

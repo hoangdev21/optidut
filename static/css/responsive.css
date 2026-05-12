@@ -1,0 +1,121 @@
+/* ══════════════════════════════════════
+   RESPONSIVE.CSS - Media Queries
+   ══════════════════════════════════════ */
+
+/* Tablet ngang */
+@media (max-width: 992px) {
+    .card-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Tablet */
+@media (max-width: 768px) {
+    .sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.25s;
+    }
+    .sidebar.open {
+        transform: translateX(0);
+    }
+    .sidebar-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.4);
+        z-index: 99;
+    }
+    .sidebar-overlay.show {
+        display: block;
+    }
+    .main-content {
+        margin-left: 0;
+    }
+    .header {
+        left: 0;
+    }
+    .hamburger {
+        display: block;
+    }
+    .page-content {
+        padding: 16px;
+    }
+    .filter-bar {
+        flex-direction: column;
+    }
+    .filter-group {
+        width: 100%;
+    }
+    .filter-group .form-input,
+    .filter-group .form-select {
+        width: 100%;
+    }
+    .notification-dropdown {
+        width: 280px;
+        right: -60px;
+    }
+}
+
+/* Mobile */
+@media (max-width: 576px) {
+    .card-grid {
+        grid-template-columns: 1fr;
+    }
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .page-content {
+        padding: 12px;
+    }
+    .btn-group {
+        flex-direction: column;
+        width: 100%;
+    }
+    .btn-group .btn {
+        width: 100%;
+        justify-content: center;
+    }
+    .form-container {
+        padding: 16px;
+    }
+    .form-actions {
+        flex-direction: column;
+    }
+    .form-actions .btn {
+        width: 100%;
+        justify-content: center;
+    }
+    .confirm-box {
+        margin: 16px;
+        padding: 20px;
+    }
+    .confirm-actions {
+        flex-direction: column;
+    }
+    .confirm-actions .btn {
+        width: 100%;
+    }
+    .login-box {
+        margin: 16px;
+        padding: 24px;
+    }
+    .pagination {
+        gap: 2px;
+    }
+    .pagination a,
+    .pagination span {
+        min-width: 28px;
+        height: 28px;
+        font-size: 12px;
+    }
+    .table-actions {
+        flex-direction: column;
+    }
+}

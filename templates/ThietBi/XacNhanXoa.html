@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block title %}Xóa thiết bị - OptiDUT{% endblock %}
+{% block content %}
+<div class="confirm-box">
+    <h2>⚠ Xác nhận xóa</h2>
+    <p>Bạn có chắc chắn muốn xóa thiết bị <strong>{{ thiet_bi.ten_thiet_bi }}</strong> tại phòng {{ thiet_bi.phong_hoc.ma_phong }}?</p>
+    <form method="post">{% csrf_token %}
+        <div class="confirm-actions">
+            <button type="submit" class="btn btn-danger">Xóa</button>
+            <a href="{% url 'danh_sach_thiet_bi' %}" class="btn btn-outline">Hủy</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

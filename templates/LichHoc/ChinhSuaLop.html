@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block title %}Chỉnh sửa Lớp học - OptiDUT{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-content">
+        <h1>Chỉnh sửa Lớp học</h1>
+        <p>Cập nhật thông tin của lớp {{ lop.ten_lop }}.</p>
+    </div>
+</div>
+
+<div class="card">
+    <form method="POST" class="form">
+        {% csrf_token %}
+        <div class="form-grid">
+            <div class="form-group full-width">
+                <label class="form-label">Tên lớp học</label>
+                {{ form.ten_lop }}
+                {{ form.ten_lop.errors }}
+            </div>
+            <div class="form-group">
+                <label class="form-label">Khoa</label>
+                {{ form.khoa }}
+                {{ form.khoa.errors }}
+            </div>
+            <div class="form-group">
+                <label class="form-label">Niên khóa</label>
+                {{ form.nien_khoa }}
+                {{ form.nien_khoa.errors }}
+            </div>
+        </div>
+        
+        <div class="form-actions">
+            <a href="{% url 'danh_sach_lop' %}" class="btn btn-outline">Hủy</a>
+            <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

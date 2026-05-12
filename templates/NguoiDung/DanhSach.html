@@ -1,0 +1,150 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Quản lý tài khoản - OptiDUT{% endblock %}
+
+{% block extra_css %}
+<style>
+    .users-wrapper { max-width: 1400px; margin: 0 auto; }
+    
+    /* Filter Card Style */
+    .filter-card {
+        background: var(--color-white);
+        border: 1px solid var(--color-border);
+        border-radius: 4px;
+        padding: 20px;
+        margin-bottom: 24px;
+    }
+    .filter-form {
+        display: flex;
+        gap: 20px;
+        align-items: flex-end;
+        flex-wrap: wrap;
+    }
+    .filter-item { flex: 1; min-width: 250px; }
+    .filter-item label { display: block; font-size: 12px; font-weight: 600; color: var(--color-text-secondary); margin-bottom: 6px; }
+
+    /* Table Styles - No outer border on container */
+    .table-responsive { width: 100%; overflow-x: auto; }
+    .data-table { width: 100%; border-collapse: collapse; min-width: 1000px; font-size: 13px; border: none !important; }
+    .data-table th { 
+        background: var(--color-primary); 
+        color: var(--color-white); 
+        font-weight: 600; 
+        text-transform: uppercase; 
+        font-size: 11px; 
+        letter-spacing: 0.5px;
+        padding: 12px 15px;
+        text-align: left;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .data-table td { 
+        padding: 12px 15px; 
+        border: 1px solid var(--color-border); 
+        vertical-align: middle; 
+    }
+    .data-table tbody tr:nth-child(even) { background: #F8FAFC; }
+    .data-table tbody tr:hover { background: #F1F5F9; }
+
+    .action-btns { display: flex; gap: 8px; justify-content: center; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="users-wrapper">
+    <div class="page-header">
+        <h1 class="page-title"><i class='bx bx-group'></i> Quản lý tài khoản người dùng</h1>
+        <a href="{% url 'them_nguoi_dung' %}" class="btn btn-accent"><i class='bx bx-user-plus'></i> Thêm tài khoản</a>
+    </div>
+
+    <!-- Filter Card -->
+    <div class="filter-card">
+        <form method="get" class="filter-form">
+            <div class="filter-item">
+                <label>Tìm kiếm thông tin</label>
+                <div style="position: relative;">
+                    <input type="text" name="q" value="{{ tu_khoa }}" class="form-input" placeholder="Tìm theo họ tên, tên đăng nhập...">
+                </div>
+            </div>
+            <div class="filter-item">
+                <label>Phân loại vai trò</label>
+                <select name="vai_tro" class="form-select">
+                    <option value="">Tất cả vai trò</option>
+                    {% for value, label in vai_tro_choices %}
+                    <option value="{{ value }}" {% if value == vai_tro_loc %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div style="flex-shrink: 0;">
+                <button type="submit" class="btn btn-primary" style="padding-left: 30px; padding-right: 30px;">
+                    <i class='bx bx-search-alt'></i> Lọc dữ liệu
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Table Section -->
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th style="width: 50px;" class="text-center">STT</th>
+                    <th>Tên đăng nhập</th>
+                    <th>Họ và tên</th>
+                    <th style="width: 120px;">Mã số</th>
+                    <th>Email liên hệ</th>
+                    <th style="width: 150px;">Vai trò</th>
+                    <th style="width: 120px;" class="text-center">Trạng thái</th>
+                    <th style="width: 120px;" class="text-center">Tác vụ</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for nd in nguoi_dungs %}
+                <tr>
+                    <td class="text-center">{{ forloop.counter0|add:nguoi_dungs.start_index }}</td>
+                    <td><strong style="color: var(--color-primary);">{{ nd.username }}</strong></td>
+                    <td>{{ nd.ho_ten }}</td>
+                    <td>{{ nd.ma_so|default:"-" }}</td>
+                    <td>{{ nd.email|default:"<small style='color:#94a3b8'>Chưa cập nhật</small>"|safe }}</td>
+                    <td>
+                        {% if nd.la_quan_tri %}<span class="badge badge-danger">Quản trị viên</span>
+                        {% elif nd.la_giao_vu %}<span class="badge badge-warning">Giáo vụ</span>
+                        {% elif nd.la_giang_vien %}<span class="badge badge-primary">Giảng viên</span>
+                        {% else %}<span class="badge badge-outline">Sinh viên</span>{% endif %}
+                    </td>
+                    <td class="text-center">
+                        {% if nd.is_active %}
+                        <span style="color: #059669; font-weight: 600;">Hoạt động</span>
+                        {% else %}
+                        <span style="color: #DC2626; font-weight: 600;">Vô hiệu</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="action-btns">
+                            <a href="{% url 'chinh_sua_nguoi_dung' nd.pk %}" class="btn btn-sm btn-outline" title="Chỉnh sửa">
+                                <i class='bx bx-edit' style="font-size: 16px; color: var(--color-primary);"></i>
+                            </a>
+                            <a href="{% url 'xoa_nguoi_dung' nd.pk %}" class="btn btn-sm btn-outline" title="Xóa" onclick="return confirm('Bạn có chắc chắn muốn xóa tài khoản này?')">
+                                <i class='bx bx-trash' style="font-size: 16px; color: var(--color-danger);"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="text-center" style="padding: 60px;">
+                        <i class='bx bx-user-x' style="font-size: 48px; color: #E2E8F0; display: block; margin-bottom: 10px;"></i>
+                        <div style="color: var(--color-text-secondary);">Không tìm thấy tài khoản nào phù hợp.</div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div style="margin-top: 20px;">
+        {% with page_obj=nguoi_dungs %}
+        {% include 'components/Pagination.html' %}
+        {% endwith %}
+    </div>
+</div>
+{% endblock %}

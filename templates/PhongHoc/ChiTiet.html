@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% block title %}{{ phong.ma_phong }} - OptiDUT{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Chi tiết: {{ phong.ma_phong }} - {{ phong.ten_phong }}</h1>
+    <a href="{% url 'danh_sach_phong' %}" class="btn btn-outline">← Quay lại</a>
+</div>
+
+<div class="card">
+    <table class="data-table" style="max-width:500px;">
+        <tr><td style="font-weight:500; width:140px;">Mã phòng</td><td>{{ phong.ma_phong }}</td></tr>
+        <tr><td style="font-weight:500;">Tên phòng</td><td>{{ phong.ten_phong }}</td></tr>
+        <tr><td style="font-weight:500;">Tòa nhà</td><td>{{ phong.toa_nha }}</td></tr>
+        <tr><td style="font-weight:500;">Sức chứa</td><td>{{ phong.suc_chua }} chỗ</td></tr>
+        <tr><td style="font-weight:500;">Loại phòng</td><td>{{ phong.get_loai_phong_display }}</td></tr>
+        <tr><td style="font-weight:500;">Trạng thái</td><td>
+            {% if phong.trang_thai == 'trong' %}<span class="badge badge-success">Trống</span>
+            {% elif phong.trang_thai == 'dang_su_dung' %}<span class="badge badge-accent">Đang dùng</span>
+            {% else %}<span class="badge badge-danger">Bảo trì</span>{% endif %}
+        </td></tr>
+        <tr><td style="font-weight:500;">Ghi chú</td><td>{{ phong.ghi_chu|default:"-" }}</td></tr>
+    </table>
+</div>
+
+<h2 style="font-size:16px; color:var(--color-primary); margin:20px 0 12px;">Thiết bị trong phòng</h2>
+<div class="table-container">
+    <table class="data-table">
+        <thead>
+            <tr><th>Thiết bị</th><th>Số lượng</th><th>Trạng thái</th><th>Ghi chú</th></tr>
+        </thead>
+        <tbody>
+            {% for tb in thiet_bis %}
+            <tr>
+                <td>{{ tb.ten_thiet_bi }}</td>
+                <td>{{ tb.so_luong }}</td>
+                <td>
+                    {% if tb.trang_thai == 'hoat_dong' %}<span class="badge badge-success">Hoạt động</span>
+                    {% elif tb.trang_thai == 'hong' %}<span class="badge badge-danger">Hỏng</span>
+                    {% else %}<span class="badge badge-warning">Bảo trì</span>{% endif %}
+                </td>
+                <td>{{ tb.ghi_chu|default:"-" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="empty-state">Chưa có thiết bị nào.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

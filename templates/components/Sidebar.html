@@ -1,0 +1,131 @@
+{% load static %}
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+        <img src="{% static 'img/logo.png' %}" alt="DUT" class="sidebar-logo">
+        <div class="header-text">
+            <h2 style="display: flex; align-items: baseline; gap: 0; margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -0.5px;">Opti<span style="color: #FFFF00; font-size: 22px; opacity: 1 !important; text-shadow: none !important;">DUT</span></h2>
+            <span style="display: block; margin-top: -2px;">HỆ THỐNG QUẢN LÝ</span>
+        </div>
+    </div>
+
+    <nav class="sidebar-nav">
+        <div class="nav-section">Chính</div>
+        <a href="{% url 'dashboard' %}" class="nav-link">
+            <i class='bx bx-grid-alt nav-icon'></i>
+            <span class="nav-text">Dashboard</span>
+        </a>
+
+        {% if user.la_quan_tri %}
+        <div class="nav-section">Hệ thống</div>
+        <a href="{% url 'danh_sach_nguoi_dung' %}" class="nav-link">
+            <i class='bx bx-group nav-icon'></i>
+            <span class="nav-text">Quản lý tài khoản</span>
+        </a>
+        {% endif %}
+
+        {% if user.la_quan_tri or user.la_giao_vu %}
+        <div class="nav-section">Tài nguyên</div>
+        <a href="{% url 'danh_sach_lop' %}" class="nav-link">
+            <i class='bx bx-book-bookmark nav-icon'></i>
+            <span class="nav-text">Lớp học phần</span>
+        </a>
+        <a href="{% url 'danh_sach_phong' %}" class="nav-link">
+            <i class='bx bx-building-house nav-icon'></i>
+            <span class="nav-text">Phòng học</span>
+        </a>
+        <a href="{% url 'danh_sach_thiet_bi' %}" class="nav-link">
+            <i class='bx bx-plug nav-icon'></i>
+            <span class="nav-text">Thiết bị</span>
+        </a>
+        {% endif %}
+
+        {% if user.la_giao_vu %}
+        <div class="nav-section">Quản lý lịch</div>
+        <a href="{% url 'danh_sach_lich' %}" class="nav-link">
+            <i class='bx bx-calendar-event nav-icon'></i>
+            <span class="nav-text">Quản lý lịch học</span>
+        </a>
+        <a href="{% url 'them_lich' %}" class="nav-link">
+            <i class='bx bx-calendar-plus nav-icon'></i>
+            <span class="nav-text">Xếp lịch đơn</span>
+        </a>
+        <a href="{% url 'them_lich_hang_loat' %}" class="nav-link">
+            <i class='bx bx-calendar-star nav-icon'></i>
+            <span class="nav-text">Xếp lịch hàng loạt</span>
+        </a>
+        {% endif %}
+
+        <div class="nav-section">Tra cứu</div>
+        <a href="{% url 'danh_sach_lich' %}" class="nav-link">
+            <i class='bx bx-list-ul nav-icon'></i>
+            <span class="nav-text">{% if user.la_giang_vien %}Xem lịch dạy{% else %}Xem lịch học{% endif %}</span>
+        </a>
+        <a href="{% url 'thoi_khoa_bieu_tuan' %}" class="nav-link">
+            <i class='bx bx-calendar nav-icon'></i>
+            <span class="nav-text">Thời khóa biểu tuần</span>
+        </a>
+        <a href="{% url 'khung_gio_hoc' %}" class="nav-link">
+            <i class='bx bx-time-five nav-icon'></i>
+            <span class="nav-text">Khung giờ tiết học</span>
+        </a>
+        {% if user.la_giang_vien or user.la_quan_tri or user.la_giao_vu %}
+        <a href="{% url 'tra_cuu_phong' %}" class="nav-link">
+            <i class='bx bx-search-alt nav-icon'></i>
+            <span class="nav-text">Tìm phòng trống</span>
+        </a>
+        {% endif %}
+        <a href="{% url 'so_do_phong' %}" class="nav-link">
+            <i class='bx bx-map-alt nav-icon'></i>
+            <span class="nav-text">Sơ đồ tòa nhà</span>
+        </a>
+
+        {% if user.la_giang_vien %}
+        <div class="nav-section">Hỗ trợ</div>
+        <a href="{% url 'danh_sach_yeu_cau' %}" class="nav-link">
+            <i class='bx bx-git-pull-request nav-icon'></i>
+            <span class="nav-text">Yêu cầu đổi lịch</span>
+        </a>
+        {% endif %}
+
+        {% if user.la_quan_tri or user.la_giao_vu %}
+        <div class="nav-section">Duyệt & Báo cáo</div>
+        <a href="{% url 'danh_sach_yeu_cau' %}" class="nav-link">
+            <i class='bx bx-git-pull-request nav-icon'></i>
+            <span class="nav-text">Duyệt yêu cầu</span>
+        </a>
+        <a href="{% url 'danh_sach_bao_hong' %}" class="nav-link">
+            <i class='bx bx-error-circle nav-icon'></i>
+            <span class="nav-text">Báo hỏng thiết bị</span>
+        </a>
+        <a href="{% url 'thong_ke_tong_quan' %}" class="nav-link">
+            <i class='bx bx-bar-chart-square nav-icon'></i>
+            <span class="nav-text">Thống kê</span>
+        </a>
+        {% endif %}
+
+        <a href="{% url 'lich_su_thay_doi' %}" class="nav-link">
+            <i class='bx bx-history nav-icon'></i>
+            <span class="nav-text">Lịch sử thay đổi</span>
+        </a>
+
+        <div class="nav-section">Cá nhân</div>
+        <a href="{% url 'thong_tin_ca_nhan' %}" class="nav-link">
+            <i class='bx bx-user nav-icon'></i>
+            <span class="nav-text">Hồ sơ của tôi</span>
+        </a>
+        <a href="{% url 'danh_sach_thong_bao' %}" class="nav-link">
+            <i class='bx bx-bell nav-icon'></i>
+            <span class="nav-text">Thông báo</span>
+            {% if so_thong_bao_chua_doc %}
+            <span class="badge badge-accent" style="margin-left:auto; border-radius: 10px;">{{ so_thong_bao_chua_doc }}</span>
+            {% endif %}
+        </a>
+    </nav>
+
+    <div class="sidebar-footer">
+        <a href="{% url 'dang_xuat' %}" class="nav-link logout-link" style="color: #FDA4AF;">
+            <i class='bx bx-log-out nav-icon'></i>
+            <span class="nav-text">Đăng xuất</span>
+        </a>
+    </div>
+</aside>

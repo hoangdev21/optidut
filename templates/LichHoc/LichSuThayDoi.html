@@ -1,0 +1,217 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Lịch sử thay đổi - OptiDUT{% endblock %}
+{% block extra_css %}
+<style>
+    .history-wrapper { max-width: 1200px; margin: 0 auto; }
+
+    .week-toolbar { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+    .week-label { font-size: 16px; font-weight: 600; color: var(--color-text); min-width: 220px; text-align: center; }
+    .week-label small { display: block; font-size: 12px; font-weight: 400; color: var(--color-text-secondary); }
+
+    .week-days { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
+    .day-btn { 
+        display: inline-flex; 
+        flex-direction: column; 
+        align-items: center; 
+        justify-content: center; 
+        min-width: 100px; 
+        padding: 12px 10px; 
+        border: 1px solid var(--color-border); 
+        background: var(--color-white); 
+        color: var(--color-text); 
+        font-size: 13px; 
+        font-weight: 600;
+        border-radius: 4px;
+        transition: all 0.2s ease;
+        text-decoration: none;
+    }
+    .day-btn span { margin-top: 4px; font-size: 11px; color: var(--color-text-secondary); font-weight: 400; }
+    .day-btn:hover { 
+        border-color: var(--color-primary); 
+        background: #F8FAFC;
+        transform: translateY(-2px);
+    }
+    .day-btn.is-active { 
+        background: var(--color-primary); 
+        border-color: var(--color-primary); 
+        color: var(--color-white); 
+        box-shadow: 0 4px 10px rgba(0, 51, 102, 0.2);
+    }
+    .day-btn.is-active span { color: rgba(255, 255, 255, 0.8); }
+    .day-btn.is-today { position: relative; }
+    .day-btn.is-today::after {
+        content: 'Hôm nay';
+        position: absolute;
+        top: -8px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--color-accent);
+        color: white;
+        font-size: 9px;
+        padding: 1px 6px;
+        border-radius: 10px;
+        white-space: nowrap;
+    }
+
+    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin: 8px 0 24px; }
+    .stat-box { 
+        border: 1px solid var(--color-border); 
+        background: var(--color-white); 
+        padding: 20px; 
+        display: flex; 
+        align-items: center; 
+        gap: 15px;
+        border-radius: 4px;
+        transition: transform 0.2s;
+    }
+    .stat-box:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+    .stat-icon-v2 { 
+        width: 48px; height: 48px; 
+        display: flex; align-items: center; justify-content: center; 
+        flex-shrink: 0;
+    }
+    .stat-icon-v2 img { width: 100%; height: 100%; object-fit: contain; }
+    .stat-info { display: flex; flex-direction: column; }
+    .stat-value { font-size: 22px; font-weight: 700; color: var(--color-text); line-height: 1; margin-bottom: 4px; }
+    .stat-text { font-size: 13px; color: var(--color-text-secondary); font-weight: 500; }
+
+    .list-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+    .list-title { font-size: 16px; font-weight: 600; color: var(--color-primary); }
+    .list-meta { font-size: 12px; color: var(--color-text-secondary); }
+
+    .table-shell { border: 1px solid var(--color-text); border-radius: 0; background: var(--color-white); overflow-x: auto; }
+    .basic-table { width: 100%; border-collapse: collapse; min-width: 860px; font-size: 13px; }
+    .basic-table th,
+    .basic-table td { border: 1px solid var(--color-text); padding: 10px 12px; }
+    .basic-table th { background: var(--color-white); text-transform: uppercase; letter-spacing: 0.4px; font-size: 12px; }
+    .basic-table tbody tr:hover { background: #F8F9FA; }
+
+    .checkbox-cell { width: 42px; text-align: center; }
+    .checkbox-input { width: 16px; height: 16px; accent-color: var(--color-primary); }
+    .text-center { text-align: center; }
+    .status-text { font-size: 12px; font-weight: 600; }
+    .status-pending { color: var(--color-warning); }
+    .status-approved { color: var(--color-success); }
+    .status-rejected { color: var(--color-danger); }
+
+    @media (max-width: 992px) {
+        .stats-row { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 576px) {
+        .stats-row { grid-template-columns: 1fr; }
+        .day-btn { min-width: 100%; }
+        .week-toolbar .btn { width: 100%; justify-content: center; }
+    }
+</style>
+{% endblock %}
+{% block content %}
+<div class="history-wrapper">
+    <div class="page-header">
+        <h1 class="page-title"><i class='bx bx-history'></i> Lịch sử thay đổi lịch học</h1>
+        {% if user.la_giang_vien %}
+        <a href="{% url 'danh_sach_lich' %}" class="btn btn-outline">← Về danh sách lịch</a>
+        {% endif %}
+    </div>
+
+    <div class="week-toolbar">
+        <a href="?ngay={{ tuan_truoc|date:'Y-m-d' }}" class="btn btn-outline">◀ Tuần trước</a>
+        <div class="week-label">
+            {{ dau_tuan|date:"d/m" }} — {{ cuoi_tuan|date:"d/m/Y" }}
+            <small>{% if hom_nay >= dau_tuan and hom_nay <= cuoi_tuan %}Tuần hiện tại{% endif %}</small>
+        </div>
+        <a href="?ngay={{ tuan_sau|date:'Y-m-d' }}" class="btn btn-outline">Tuần sau ▶</a>
+        <a href="{% url 'lich_su_thay_doi' %}" class="btn btn-primary" style="font-size:12px;">↩ Tuần này</a>
+    </div>
+
+    <div class="week-days">
+        {% for d in ds_ngay %}
+        <a href="?ngay={{ d.ngay|date:'Y-m-d' }}" class="day-btn{% if d.is_selected %} is-active{% endif %}{% if d.is_today %} is-today{% endif %}">
+            {{ d.ten_thu }}
+            <span>{{ d.ngay|date:"d/m" }}</span>
+        </a>
+        {% endfor %}
+    </div>
+
+    <div class="stats-row">
+        <div class="stat-box">
+            <div class="stat-icon-v2"><img src="{% static 'img/icons/tong_yeu_cau.png' %}" alt="Tổng"></div>
+            <div class="stat-info">
+                <div class="stat-value">{{ thong_ke.tong }}</div>
+                <div class="stat-text">Tổng yêu cầu</div>
+            </div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-icon-v2"><img src="{% static 'img/icons/cho_duyet.png' %}" alt="Chờ"></div>
+            <div class="stat-info">
+                <div class="stat-value">{{ thong_ke.cho_duyet }}</div>
+                <div class="stat-text">Chờ duyệt</div>
+            </div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-icon-v2"><img src="{% static 'img/icons/da_duyet.png' %}" alt="Duyệt"></div>
+            <div class="stat-info">
+                <div class="stat-value">{{ thong_ke.da_duyet }}</div>
+                <div class="stat-text">Đã duyệt</div>
+            </div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-icon-v2"><img src="{% static 'img/icons/tu_choi.png' %}" alt="Từ chối"></div>
+            <div class="stat-info">
+                <div class="stat-value">{{ thong_ke.tu_choi }}</div>
+                <div class="stat-text">Từ chối</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="list-toolbar">
+        <div class="list-title">Danh sách thay đổi</div>
+        <div class="list-meta">Tổng: {{ thong_ke.tong }}</div>
+    </div>
+
+    <div class="table-shell">
+        <table class="basic-table">
+            <thead>
+                <tr>
+                    <th class="checkbox-cell"><input type="checkbox" class="checkbox-input" aria-label="Chọn tất cả"></th>
+                    <th class="text-center">STT</th>
+                    <th>Tên môn học</th>
+                    <th>Giảng viên</th>
+                    <th>Ngày học</th>
+                    <th>Phòng</th>
+                    <th class="text-center">Tiết</th>
+                    <th class="text-center">Trạng thái</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr>
+                    <td class="checkbox-cell"><input type="checkbox" class="checkbox-input" aria-label="Chọn dòng"></td>
+                    <td class="text-center">{{ forloop.counter }}</td>
+                    <td>{{ log.lich_hoc.mon_hoc }}</td>
+                    <td>{% if log.lich_hoc.giang_vien %}{{ log.lich_hoc.giang_vien.ho_ten }}{% else %}-{% endif %}</td>
+                    <td>{{ log.lich_hoc.ngay_hoc|date:"d/m/Y" }}</td>
+                    <td>{% if log.lich_hoc.phong_hoc %}{{ log.lich_hoc.phong_hoc.ma_phong }}{% else %}-{% endif %}</td>
+                    <td class="text-center">{{ log.lich_hoc.tiet_bat_dau }}-{{ log.lich_hoc.tiet_ket_thuc }}</td>
+                    <td class="text-center">
+                        {% if log.trang_thai == 'cho_duyet' %}
+                        <span class="status-text status-pending">Chờ duyệt</span>
+                        {% elif log.trang_thai == 'da_duyet' %}
+                        <span class="status-text status-approved">Đã duyệt</span>
+                        {% else %}
+                        <span class="status-text status-rejected">Từ chối</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="text-center" style="padding: 24px;">Chưa có thay đổi nào.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% with page_obj=logs %}{% include 'components/Pagination.html' %}{% endwith %}
+</div>
+{% endblock %}

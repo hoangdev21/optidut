@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% block title %}Duyệt yêu cầu - OptiDUT{% endblock %}
+{% block extra_css %}
+<style>
+    .review-wrapper { max-width: 800px; margin: 0 auto; }
+    .review-card { background: #fff; border: 1px solid var(--color-border); border-radius: 8px; overflow: hidden; margin-bottom: 20px; }
+    .review-header { background: var(--color-primary); color: #fff; padding: 16px 20px; }
+    .review-header h2 { font-size: 16px; margin: 0; }
+    .review-header .tag { background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 3px; font-size: 12px; margin-left: 8px; }
+    .review-body { padding: 20px; }
+    .review-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+    .review-item .r-label { font-size: 11px; color: var(--color-text-secondary); text-transform: uppercase; margin-bottom: 2px; }
+    .review-item .r-val { font-size: 14px; font-weight: 500; color: var(--color-text); }
+    .review-reason { background: #fafbfc; border: 1px solid #eee; padding: 12px 16px; border-radius: 4px; margin-bottom: 16px; }
+    .review-reason .r-label { font-size: 11px; color: var(--color-text-secondary); text-transform: uppercase; margin-bottom: 4px; }
+    .review-change { background: #e8f0fe; border: 1px solid #d0e0f0; padding: 12px 16px; border-radius: 4px; margin-bottom: 16px; }
+    .review-change h4 { font-size: 13px; font-weight: 600; color: var(--color-primary); margin-bottom: 6px; }
+    .review-change .change-row { font-size: 13px; margin-bottom: 4px; }
+    .review-change .change-row .old { text-decoration: line-through; color: #999; }
+    .review-change .change-row .new { color: var(--color-primary); font-weight: 600; }
+    .review-actions { display: flex; gap: 12px; margin-top: 20px; }
+    .review-actions .btn { padding: 10px 24px; font-size: 14px; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="review-wrapper">
+    <div class="page-header"><h1 class="page-title"><i class='bx bx-check-shield'></i> Duyệt yêu cầu đổi lịch</h1></div>
+
+    <div class="review-card">
+        <div class="review-header">
+            <h2>{{ yc.get_loai_yeu_cau_display }}<span class="tag">{{ yc.get_trang_thai_display }}</span></h2>
+        </div>
+        <div class="review-body">
+            <div class="review-grid">
+                <div class="review-item"><div class="r-label">Người yêu cầu</div><div class="r-val">{{ yc.nguoi_yeu_cau.ho_ten }}</div></div>
+                <div class="review-item"><div class="r-label">Ngày gửi</div><div class="r-val">{{ yc.ngay_tao|date:"d/m/Y H:i" }}</div></div>
+                <div class="review-item"><div class="r-label">Môn học</div><div class="r-val">{{ yc.lich_hoc.mon_hoc }}</div></div>
+                <div class="review-item"><div class="r-label">Lớp</div><div class="r-val">{{ yc.lich_hoc.lop_hoc.ten_lop|default:"-" }}</div></div>
+                <div class="review-item"><div class="r-label">Phòng hiện tại</div><div class="r-val">{{ yc.lich_hoc.phong_hoc.ma_phong }}</div></div>
+                <div class="review-item"><div class="r-label">Ngày / Tiết</div><div class="r-val">{{ yc.lich_hoc.ngay_hoc|date:"d/m/Y" }} • Tiết {{ yc.lich_hoc.tiet_bat_dau }}-{{ yc.lich_hoc.tiet_ket_thuc }}</div></div>
+            </div>
+
+            <div class="review-reason">
+                <div class="r-label">Lý do</div>
+                <div style="font-size:14px;color:var(--color-text);white-space:pre-wrap;">{{ yc.ly_do }}</div>
+            </div>
+
+            {% if yc.phong_moi or yc.ngay_moi or yc.tiet_moi_bat_dau %}
+            <div class="review-change">
+                <h4>📋 Thay đổi đề xuất</h4>
+                {% if yc.phong_moi %}
+                <div class="change-row">Phòng: <span class="old">{{ yc.lich_hoc.phong_hoc.ma_phong }}</span> → <span class="new">{{ yc.phong_moi.ma_phong }}</span></div>
+                {% endif %}
+                {% if yc.ngay_moi %}
+                <div class="change-row">Ngày: <span class="old">{{ yc.lich_hoc.ngay_hoc|date:"d/m/Y" }}</span> → <span class="new">{{ yc.ngay_moi|date:"d/m/Y" }}</span></div>
+                {% endif %}
+                {% if yc.tiet_moi_bat_dau %}
+                <div class="change-row">Tiết: <span class="old">{{ yc.lich_hoc.tiet_bat_dau }}-{{ yc.lich_hoc.tiet_ket_thuc }}</span> → <span class="new">{{ yc.tiet_moi_bat_dau }}-{{ yc.tiet_moi_ket_thuc }}</span></div>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            {% if yc.trang_thai == 'cho_duyet' %}
+            <form method="post">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label style="font-weight:500;">Ghi chú duyệt (không bắt buộc)</label>
+                    <textarea name="ghi_chu_duyet" class="form-input" rows="3" placeholder="Lý do duyệt/từ chối..."></textarea>
+                </div>
+                <div class="review-actions">
+                    <a href="{% url 'danh_sach_yeu_cau' %}" class="btn btn-outline">← Quay lại</a>
+                    <button type="submit" name="hanh_dong" value="duyet" class="btn btn-primary" style="background:#188038;border-color:#188038;">✓ Duyệt & Áp dụng</button>
+                    <button type="submit" name="hanh_dong" value="tu_choi" class="btn btn-danger">✗ Từ chối</button>
+                </div>
+            </form>
+            {% else %}
+            <div style="padding:12px;background:#f8f9fa;border-radius:4px;font-size:13px;">
+                <strong>{{ yc.get_trang_thai_display }}</strong> bởi {{ yc.nguoi_duyet.ho_ten|default:"-" }} lúc {{ yc.ngay_duyet|date:"d/m/Y H:i" }}
+                {% if yc.ghi_chu_duyet %}<br>Ghi chú: {{ yc.ghi_chu_duyet }}{% endif %}
+            </div>
+            <a href="{% url 'danh_sach_yeu_cau' %}" class="btn btn-outline" style="margin-top:16px;">← Quay lại</a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

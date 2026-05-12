@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+{% block title %}Thiết bị - OptiDUT{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Danh sách thiết bị</h1>
+    <div class="btn-group">
+        {% if user.la_quan_tri or user.la_giao_vu %}
+        <a href="{% url 'them_thiet_bi' %}" class="btn btn-accent">+ Thêm thiết bị</a>
+        {% endif %}
+        {% if user.la_giang_vien %}
+        <a href="{% url 'bao_hong' %}" class="btn btn-danger">⚠ Báo hỏng</a>
+        {% endif %}
+    </div>
+</div>
+
+<form method="get" class="filter-bar">
+    <div class="filter-group">
+        <label>Tìm kiếm</label>
+        <input type="text" name="q" value="{{ tu_khoa }}" class="form-input" placeholder="Tên thiết bị...">
+    </div>
+    <div class="filter-group">
+        <label>Trạng thái</label>
+        <select name="trang_thai" class="form-select">
+            <option value="">Tất cả</option>
+            {% for value, label in trang_thai_choices %}
+            <option value="{{ value }}" {% if value == trang_thai_loc %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="filter-group">
+        <label>&nbsp;</label>
+        <button type="submit" class="btn btn-primary">Lọc</button>
+    </div>
+</form>
+
+<div class="table-container">
+    <table class="data-table">
+        <thead>
+            <tr><th>Thiết bị</th><th>Phòng</th><th>Số lượng</th><th>Trạng thái</th><th>Ghi chú</th>
+            {% if user.la_quan_tri or user.la_giao_vu %}<th>Hành động</th>{% endif %}</tr>
+        </thead>
+        <tbody>
+            {% for tb in thiet_bis %}
+            <tr>
+                <td>{{ tb.ten_thiet_bi }}</td>
+                <td><span style="color: #000; font-weight: 700;">{{ tb.phong_hoc.ma_phong }}</span></td>
+                <td>{{ tb.so_luong }}</td>
+                <td>
+                    {% if tb.trang_thai == 'hoat_dong' %}<span class="badge badge-success">Hoạt động</span>
+                    {% elif tb.trang_thai == 'hong' %}<span class="badge badge-danger">Hỏng</span>
+                    {% else %}<span class="badge badge-warning">Bảo trì</span>{% endif %}
+                </td>
+                <td>{{ tb.ghi_chu|default:"-"|truncatechars:40 }}</td>
+                {% if user.la_quan_tri or user.la_giao_vu %}
+                <td>
+                    <div class="table-actions">
+                        <a href="{% url 'chinh_sua_thiet_bi' tb.pk %}" class="btn btn-sm btn-primary">Sửa</a>
+                        <a href="{% url 'xoa_thiet_bi' tb.pk %}" class="btn btn-sm btn-danger">Xóa</a>
+                    </div>
+                </td>
+                {% endif %}
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="empty-state">Chưa có thiết bị nào.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% with page_obj=thiet_bis %}{% include 'components/Pagination.html' %}{% endwith %}
+{% endblock %}

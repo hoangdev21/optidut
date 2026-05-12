@@ -1,0 +1,152 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Thông báo - OptiDUT{% endblock %}
+
+{% block extra_css %}
+<style>
+    .notif-wrapper { max-width: 1400px; margin: 0 auto; }
+    
+    /* Week Day Selector Styles - Spread out */
+    .week-toolbar { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+    .week-label { font-size: 16px; font-weight: 600; color: var(--color-text); min-width: 220px; text-align: center; }
+    .week-label small { display: block; font-size: 12px; font-weight: 400; color: var(--color-text-secondary); }
+
+    .week-days { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; margin-bottom: 30px; }
+    .day-btn { 
+        display: inline-flex; 
+        flex-direction: column; 
+        align-items: center; 
+        justify-content: center; 
+        min-width: 120px; 
+        padding: 12px 15px; 
+        border: 1px solid var(--color-border); 
+        background: var(--color-white); 
+        color: var(--color-text); 
+        font-size: 13px; 
+        font-weight: 600;
+        border-radius: 4px;
+        transition: all 0.2s ease;
+        text-decoration: none;
+    }
+    .day-btn span { margin-top: 4px; font-size: 11px; color: var(--color-text-secondary); font-weight: 400; }
+    .day-btn:hover { border-color: var(--color-primary); background: #F8FAFC; transform: translateY(-2px); }
+    .day-btn.is-active { background: var(--color-primary); border-color: var(--color-primary); color: var(--color-white); box-shadow: 0 4px 10px rgba(0,51,102,0.15); }
+    .day-btn.is-active span { color: rgba(255, 255, 255, 0.8); }
+    .day-btn.is-today { position: relative; }
+    .day-btn.is-today::after {
+        content: 'Hôm nay';
+        position: absolute;
+        top: -8px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--color-accent);
+        color: white;
+        font-size: 9px;
+        padding: 1px 6px;
+        border-radius: 10px;
+    }
+
+    /* Compact List Items */
+    .notif-list { border: 1px solid var(--color-border); border-radius: 4px; background: var(--color-white); overflow: hidden; }
+    .notif-item { 
+        padding: 15px 24px; 
+        display: flex; 
+        align-items: center; 
+        gap: 20px; 
+        border-bottom: 1px solid var(--color-border);
+        transition: background 0.2s;
+        text-decoration: none;
+        color: inherit;
+    }
+    .notif-item:last-child { border-bottom: none; }
+    .notif-item:hover { background: #FBFDFF; }
+    .notif-item.is-unread { background: #F0F9FF; }
+    
+    .notif-icon { 
+        width: 36px; height: 36px; border-radius: 50%; background: #F1F5F9; 
+        display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;
+    }
+    .notif-main { flex: 1; display: flex; align-items: center; justify-content: space-between; gap: 40px; }
+    .notif-info { flex: 1; }
+    .notif-title { font-weight: 700; color: var(--color-text); font-size: 14px; margin-bottom: 2px; }
+    .notif-body { font-size: 13px; color: var(--color-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 600px; }
+    
+    .notif-meta-side { text-align: right; min-width: 200px; }
+    .notif-time { font-size: 12px; color: var(--color-text-secondary); font-weight: 500; }
+    .notif-badge { font-size: 11px; color: var(--color-primary); font-weight: 600; display: block; margin-top: 2px; }
+
+    .notif-type-tag {
+        font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 600; text-transform: uppercase;
+    }
+    .tag-doi_phong { background: #E0E7FF; color: #4338CA; }
+    .tag-doi_lich { background: #FEF3C7; color: #92400E; }
+    .tag-huy_lich { background: #FEE2E2; color: #991B1B; }
+    .tag-bao_tri { background: #F1F5F9; color: #475569; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="notif-wrapper">
+    <div class="page-header" style="margin-bottom: 24px;">
+        <h1 class="page-title"><i class='bx bxs-bell'></i> Thông báo hệ thống</h1>
+        <div class="header-actions">
+            <a href="{% url 'doc_tat_ca' %}" class="btn btn-outline btn-sm">Đánh dấu tất cả đã đọc</a>
+        </div>
+    </div>
+
+    <!-- Week Selector -->
+    <div class="week-toolbar">
+        <a href="?ngay={{ tuan_truoc|date:'Y-m-d' }}" class="btn btn-outline">◀ Tuần trước</a>
+        <div class="week-label">
+            {{ dau_tuan|date:"d/m" }} — {{ cuoi_tuan|date:"d/m/Y" }}
+            <small>{% if hom_nay >= dau_tuan and hom_nay <= cuoi_tuan %}Tuần hiện tại{% endif %}</small>
+        </div>
+        <a href="?ngay={{ tuan_sau|date:'Y-m-d' }}" class="btn btn-outline">Tuần sau ▶</a>
+        <a href="{% url 'danh_sach_thong_bao' %}" class="btn btn-primary" style="font-size:12px;">Xem tất cả gần đây</a>
+    </div>
+
+    <div class="week-days">
+        {% for d in ds_ngay %}
+        <a href="?ngay={{ d.ngay|date:'Y-m-d' }}" class="day-btn{% if d.is_selected %} is-active{% endif %}{% if d.is_today %} is-today{% endif %}">
+            {{ d.ten_thu }}
+            <span>{{ d.ngay|date:"d/m" }}</span>
+        </a>
+        {% endfor %}
+    </div>
+
+    <div class="notif-list">
+        {% for tb in thong_baos %}
+        <a href="{% if not tb.da_doc %}{% url 'danh_dau_da_doc' tb.pk %}{% else %}#{% endif %}" class="notif-item {% if not tb.da_doc %}is-unread{% endif %}">
+            <div class="notif-icon">
+                {% if tb.loai == 'doi_phong' %}<i class='bx bx-building'></i>
+                {% elif tb.loai == 'doi_lich' %}<i class='bx bx-time-five'></i>
+                {% elif tb.loai == 'huy_lich' %}<i class='bx bx-x-circle'></i>
+                {% else %}<i class='bx bx-info-circle'></i>{% endif %}
+            </div>
+            <div class="notif-main">
+                <div class="notif-info">
+                    <div class="notif-title">
+                        {% if not tb.da_doc %}<span style="color: var(--color-accent); margin-right: 4px;">●</span>{% endif %}
+                        {{ tb.tieu_de }}
+                    </div>
+                    <div class="notif-body">{{ tb.noi_dung }}</div>
+                </div>
+                <div class="notif-meta-side">
+                    <span class="notif-type-tag tag-{{ tb.loai }}">{{ tb.get_loai_display }}</span>
+                    <div class="notif-time">{{ tb.ngay_tao|date:"H:i, d/m/Y" }}</div>
+                </div>
+            </div>
+        </a>
+        {% empty %}
+        <div style="text-align:center; padding: 100px 20px;">
+            <i class='bx bx-bell-off' style="font-size: 64px; color: #E2E8F0; display: block; margin-bottom: 15px;"></i>
+            <div style="color: var(--color-text-secondary); font-size: 16px;">Không có thông báo nào trong danh sách.</div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div style="margin-top: 30px;">
+        {% with page_obj=thong_baos %}{% include 'components/Pagination.html' %}{% endwith %}
+    </div>
+</div>
+{% endblock %}

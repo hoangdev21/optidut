@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block title %}Xóa phòng - OptiDUT{% endblock %}
+{% block content %}
+<div class="confirm-box">
+    <h2>⚠ Xác nhận xóa</h2>
+    <p>Bạn có chắc chắn muốn xóa phòng <strong>{{ phong.ma_phong }} - {{ phong.ten_phong }}</strong>?</p>
+    <form method="post">{% csrf_token %}
+        <div class="confirm-actions">
+            <button type="submit" class="btn btn-danger">Xóa</button>
+            <a href="{% url 'danh_sach_phong' %}" class="btn btn-outline">Hủy</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

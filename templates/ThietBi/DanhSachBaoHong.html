@@ -1,0 +1,405 @@
+{% extends 'base.html' %}
+{% block title %}Danh sách báo hỏng - OptiDUT{% endblock %}
+{% block extra_css %}
+<style>
+    .report-wrapper { max-width: 1400px; margin: 0 auto; }
+    
+    /* Stats Card Styling - Image based, no bg */
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 24px; }
+    .stat-card { 
+        background: var(--color-white); 
+        border-radius: 12px; 
+        padding: 24px; 
+        display: flex; 
+        align-items: center; 
+        gap: 20px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        border: 1px solid var(--color-border);
+    }
+    .stat-card img { 
+        width: 56px; 
+        height: 56px; 
+        object-fit: contain;
+    }
+    .stat-info { display: flex; flex-direction: column; }
+    .stat-value { font-size: 28px; font-weight: 700; color: var(--color-text-primary); line-height: 1.2; }
+    .stat-label { font-size: 14px; color: var(--color-text-secondary); font-weight: 500; }
+
+    /* Action Buttons & Popover Confirmation */
+    .action-btns { display: flex; gap: 8px; justify-content: center; }
+    .btn-icon { 
+        width: 32px; 
+        height: 32px; 
+        display: flex; 
+        align-items: center; 
+        justify-content: center; 
+        border-radius: 6px; 
+        border: none; 
+        cursor: pointer; 
+        transition: all 0.2s;
+        font-size: 18px;
+    }
+    .btn-view { background: #f3f4f6; color: #374151; }
+    .btn-approve { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
+    .btn-success-soft { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+
+    /* Custom Popover Confirmation */
+    .popover-confirm {
+        display: none;
+        position: fixed;
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 12px;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        z-index: 1001;
+        width: 220px;
+    }
+    .popover-confirm.active { display: block; }
+    .popover-title { font-size: 14px; font-weight: 600; margin-bottom: 8px; color: #111827; }
+    .popover-footer { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; }
+
+    /* Badge & Info Styling */
+    .badge-outline {
+        padding: 2px 10px;
+        border-radius: 9999px;
+        font-size: 12px;
+        font-weight: 600;
+        border: 1px solid transparent;
+    }
+    .badge-pending { border-color: #f59e0b; color: #d97706; background: #fffbeb; }
+    .badge-repair { border-color: #3b82f6; color: #1d4ed8; background: #eff6ff; }
+    .badge-done { border-color: #10b981; color: #059669; background: #ecfdf5; }
+
+    .text-truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* Modal Styling */
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.5);
+        backdrop-filter: blur(4px);
+    }
+    .modal-content {
+        background-color: #fefefe;
+        margin: 10% auto;
+        padding: 0;
+        border-radius: 12px;
+        width: 600px;
+        max-width: 90%;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+    }
+    .modal-header {
+        padding: 16px 20px;
+        background: #f9fafb;
+        border-bottom: 1px solid #e5e7eb;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .modal-header h3 { margin: 0; font-size: 18px; color: var(--color-text-primary); }
+    .close-modal { font-size: 24px; cursor: pointer; color: #9ca3af; }
+    .modal-body { padding: 24px; }
+
+    /* Layout overrides for filter bar to match screen */
+    .filter-bar { background: var(--color-white); padding: 20px; border-radius: 8px; border: 1px solid var(--color-border); margin-bottom: 24px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="report-wrapper">
+    <div class="page-header">
+        <h1 class="page-title">Danh sách báo hỏng</h1>
+    </div>
+
+    <!-- Stats Cards with Images (Placeholders) -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <img src="/static/img/stats/total.png" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3503/3503827.png'" alt="Total">
+            <div class="stat-info">
+                <span class="stat-value">{{ thong_ke.tong }}</span>
+                <span class="stat-label">Tổng báo hỏng</span>
+            </div>
+        </div>
+        <div class="stat-card">
+            <img src="/static/img/stats/pending.png" onerror="this.src='https://cdn-icons-png.flaticon.com/512/2972/2972531.png'" alt="Pending">
+            <div class="stat-info">
+                <span class="stat-value">{{ thong_ke.cho_xu_ly }}</span>
+                <span class="stat-label">Chờ xử lý</span>
+            </div>
+        </div>
+        <div class="stat-card">
+            <img src="/static/img/stats/repair.png" onerror="this.src='https://cdn-icons-png.flaticon.com/512/1087/1087080.png'" alt="Repairing">
+            <div class="stat-info">
+                <span class="stat-value">{{ thong_ke.dang_sua }}</span>
+                <span class="stat-label">Đang sửa</span>
+            </div>
+        </div>
+        <div class="stat-card">
+            <img src="/static/img/stats/done.png" onerror="this.src='https://cdn-icons-png.flaticon.com/512/190/190411.png'" alt="Done">
+            <div class="stat-info">
+                <span class="stat-value">{{ thong_ke.da_sua }}</span>
+                <span class="stat-label">Đã sửa</span>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .filter-container {
+            display: flex;
+            align-items: flex-end;
+            gap: 16px;
+            flex-wrap: nowrap;
+            width: 100%;
+        }
+        .filter-item { flex-shrink: 0; }
+        .filter-item-grow { flex-grow: 1; min-width: 200px; }
+        
+        @media (max-width: 1280px) {
+            .filter-container { flex-wrap: wrap; }
+            .filter-item { flex-grow: 1; }
+            .btn-filter-wrapper { width: 100%; text-align: right; }
+        }
+    </style>
+
+    <!-- Professional Responsive Filter Bar -->
+    <form method="get" class="filter-bar" style="padding: 24px; background: #fff; border: 1px solid var(--color-border); border-radius: 12px;">
+        <div class="filter-container">
+            <div class="filter-item filter-item-grow">
+                <label style="font-size: 12px; color: #64748b; margin-bottom: 6px; display: block; font-weight: 600;">Tìm kiếm</label>
+                <input type="text" name="q" value="{{ tu_khoa }}" class="form-input" placeholder="Tên thiết bị..." style="height: 40px; border-radius: 8px;">
+            </div>
+            <div class="filter-item" style="width: 120px;">
+                <label style="font-size: 12px; color: #64748b; margin-bottom: 6px; display: block; font-weight: 600;">Phòng</label>
+                <select name="phong" class="form-select" style="height: 40px; border-radius: 8px; font-size: 13px;">
+                    <option value="">Tất cả</option>
+                    {% for p in ds_phong %}
+                    <option value="{{ p.id }}" {% if phong_loc == p.id|stringformat:'s' %}selected{% endif %}>{{ p.ma_phong }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-item" style="width: 150px;">
+                <label style="font-size: 12px; color: #64748b; margin-bottom: 6px; display: block; font-weight: 600;">Người báo</label>
+                <select name="nguoi_bao" class="form-select" style="height: 40px; border-radius: 8px; font-size: 13px;">
+                    <option value="">Tất cả</option>
+                    {% for uid, ho_ten in ds_nguoi_bao %}
+                    <option value="{{ uid }}" {% if nguoi_bao_loc == uid|stringformat:'s' %}selected{% endif %}>{{ ho_ten }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-item" style="width: 130px;">
+                <label style="font-size: 12px; color: #64748b; margin-bottom: 6px; display: block; font-weight: 600;">Trạng thái</label>
+                <select name="trang_thai" class="form-select" style="height: 40px; border-radius: 8px; font-size: 13px;">
+                    <option value="">Tất cả</option>
+                    {% for value, label in trang_thai_choices %}
+                    <option value="{{ value }}" {% if trang_thai_loc == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-item" style="width: 120px;">
+                <label style="font-size: 12px; color: #64748b; margin-bottom: 6px; display: block; font-weight: 600;">Thời gian</label>
+                <select name="thoi_gian" class="form-select" style="height: 40px; border-radius: 8px; font-size: 13px;">
+                    <option value="">Tuỳ chỉnh</option>
+                    <option value="hom_nay" {% if thoi_gian_loc == 'hom_nay' %}selected{% endif %}>Hôm nay</option>
+                    <option value="hom_qua" {% if thoi_gian_loc == 'hom_qua' %}selected{% endif %}>Hôm qua</option>
+                    <option value="tuan_nay" {% if thoi_gian_loc == 'tuan_nay' %}selected{% endif %}>Tuần này</option>
+                </select>
+            </div>
+            <div class="filter-item" style="width: 140px;">
+                <label style="font-size: 12px; color: #64748b; margin-bottom: 6px; display: block; font-weight: 600;">Từ ngày</label>
+                <input type="date" name="tu_ngay" value="{{ tu_ngay }}" class="form-input" style="height: 40px; border-radius: 8px; font-size: 13px;">
+            </div>
+            <div class="filter-item" style="width: 140px;">
+                <label style="font-size: 12px; color: #64748b; margin-bottom: 6px; display: block; font-weight: 600;">Đến ngày</label>
+                <input type="date" name="den_ngay" value="{{ den_ngay }}" class="form-input" style="height: 40px; border-radius: 8px; font-size: 13px;">
+            </div>
+            <div class="filter-item btn-filter-wrapper">
+                <button type="submit" class="btn btn-primary" style="height: 40px; padding: 0 24px; font-weight: 600; border-radius: 8px; display: inline-flex; align-items: center; gap: 8px;">
+                    <i class='bx bx-search-alt-2' style="font-size: 18px;"></i> Lọc
+                </button>
+            </div>
+        </div>
+    </form>
+
+    <!-- Data Table -->
+    <div class="table-container">
+        <table class="data-table report-table">
+            <thead>
+                <tr>
+                    <th class="text-center" width="50">STT</th>
+                    <th>THIẾT BỊ</th>
+                    <th class="text-center">PHÒNG</th>
+                    <th>NGƯỜI BÁO</th>
+                    <th>MÔ TẢ</th>
+                    <th class="text-center">TRẠNG THÁI</th>
+                    <th class="text-center">NGÀY BÁO</th>
+                    <th class="text-center">THAO TÁC</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for bh in bao_hongs %}
+                <tr>
+                    <td class="text-center">{{ bao_hongs.start_index|add:forloop.counter0 }}</td>
+                    <td style="font-weight: 500;">{{ bh.thiet_bi.ten_thiet_bi }}</td>
+                    <td class="text-center"><span style="color: #000; font-weight: 700;">{{ bh.thiet_bi.phong_hoc.ma_phong }}</span></td>
+                    <td>{{ bh.nguoi_bao.ho_ten }}</td>
+                    <td><div class="text-truncate" style="max-width: 200px;" title="{{ bh.mo_ta }}">{{ bh.mo_ta }}</div></td>
+                    <td class="text-center">
+                        {% if bh.trang_thai == 'cho_xu_ly' %}<span class="badge badge-warning">Chờ xử lý</span>
+                        {% elif bh.trang_thai == 'dang_sua' %}<span class="badge badge-accent">Đang sửa</span>
+                        {% else %}<span class="badge badge-success">Đã sửa</span>{% endif %}
+                    </td>
+                    <td class="text-center" style="font-size: 13px; color: #6b7280;">{{ bh.ngay_bao|date:"d/m/Y H:i" }}</td>
+                    <td class="text-center">
+                        <div class="action-btns">
+                            {% with formatted_date=bh.ngay_bao|date:"d/m/Y H:i" %}
+                            <button class="btn-icon btn-view" title="Xem chi tiết" 
+                                data-device="{{ bh.thiet_bi.ten_thiet_bi|escapejs }}"
+                                data-room="{{ bh.thiet_bi.phong_hoc.ma_phong|escapejs }}"
+                                data-reporter="{{ bh.nguoi_bao.ho_ten|escapejs }}"
+                                data-time="{{ formatted_date|escapejs }}"
+                                data-desc="{{ bh.mo_ta|escapejs }}"
+                                onclick="openDetail(this)">
+                                <i class='bx bx-show'></i>
+                            </button>
+                            {% endwith %}
+                            
+                            {% if bh.trang_thai == 'cho_xu_ly' %}
+                            <button type="button" class="btn-icon btn-approve" title="Duyệt yêu cầu" 
+                                data-status="dang_sua" data-id="{{ bh.id }}" onclick="openConfirm(this)">
+                                <i class='bx bx-check-circle'></i>
+                            </button>
+                            {% elif bh.trang_thai == 'dang_sua' %}
+                            <button type="button" class="btn-icon btn-success-soft" title="Hoàn thành" 
+                                data-status="da_sua" data-id="{{ bh.id }}" onclick="openConfirm(this)">
+                                <i class='bx bx-check-double'></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="8" class="empty-state">Không có dữ liệu báo hỏng nào.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% with page_obj=bao_hongs %}{% include 'components/Pagination.html' %}{% endwith %}
+</div>
+
+<!-- Modal Chi tiết -->
+<div id="reportModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Nội dung báo hỏng</h3>
+            <span class="close-modal" onclick="closeModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div id="modalContent"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Popover Confirm Template (Hidden) -->
+<div id="confirmPopover" class="popover-confirm">
+    <div class="popover-title" id="popoverTitle">Xác nhận thao tác?</div>
+    <div class="popover-footer">
+        <button class="btn btn-secondary btn-sm" style="padding: 4px 10px; font-size: 12px;" onclick="closePopover()">Huỷ</button>
+        <form id="popoverForm" method="POST">
+            {% csrf_token %}
+            <input type="hidden" name="trang_thai" id="popoverStatus">
+            <button type="submit" class="btn btn-primary btn-sm" style="padding: 4px 10px; font-size: 12px;">Đồng ý</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openDetail(btn) {
+        const device = btn.getAttribute('data-device');
+        const room = btn.getAttribute('data-room');
+        const reporter = btn.getAttribute('data-reporter');
+        const time = btn.getAttribute('data-time');
+        const desc = btn.getAttribute('data-desc');
+
+        let content = `
+            <div style="padding: 10px 0;">
+                <div style="margin-bottom: 15px; display: flex; align-items: baseline;">
+                    <div style="width: 130px; color: #64748b; font-size: 13px; font-weight: 500;">Thiết bị</div>
+                    <div style="flex: 1; color: #1e293b; font-weight: 600; font-size: 15px;">${device}</div>
+                </div>
+                <div style="margin-bottom: 15px; display: flex; align-items: baseline;">
+                    <div style="width: 130px; color: #64748b; font-size: 13px; font-weight: 500;">Phòng học</div>
+                    <div style="flex: 1; color: #1e293b; font-weight: 600; font-size: 15px;">${room}</div>
+                </div>
+                <div style="margin-bottom: 15px; display: flex; align-items: baseline;">
+                    <div style="width: 130px; color: #64748b; font-size: 13px; font-weight: 500;">Người báo</div>
+                    <div style="flex: 1; color: #1e293b; font-weight: 600; font-size: 15px;">${reporter}</div>
+                </div>
+                <div style="margin-bottom: 25px; display: flex; align-items: baseline;">
+                    <div style="width: 130px; color: #64748b; font-size: 13px; font-weight: 500;">Thời gian</div>
+                    <div style="flex: 1; color: #1e293b; font-weight: 600; font-size: 15px;">${time}</div>
+                </div>
+                
+                <div style="border-top: 1px solid #f1f5f9; padding-top: 20px;">
+                    <div style="color: #64748b; font-size: 13px; font-weight: 500; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;">Mô tả chi tiết sự cố</div>
+                    <div style="color: #334155; line-height: 1.7; font-size: 15px; white-space: pre-line;">${desc}</div>
+                </div>
+            </div>
+        `;
+        document.getElementById('modalContent').innerHTML = content;
+        document.getElementById('reportModal').style.display = 'block';
+    }
+
+    function closeModal() {
+        document.getElementById('reportModal').style.display = 'none';
+    }
+
+    let currentPopoverBtn = null;
+    function openConfirm(btn) {
+        currentPopoverBtn = btn;
+        const status = btn.getAttribute('data-status');
+        const id = btn.getAttribute('data-id');
+        
+        const popover = document.getElementById('confirmPopover');
+        const rect = btn.getBoundingClientRect();
+        
+        popover.style.top = (rect.top + window.scrollY - 100) + 'px';
+        popover.style.left = (rect.left + window.scrollX - 180) + 'px';
+        
+        document.getElementById('popoverStatus').value = status;
+        document.getElementById('popoverForm').action = `/equipment/reports/${id}/status/`;
+        document.getElementById('popoverTitle').innerText = status === 'dang_sua' ? 'Duyệt sửa chữa?' : 'Hoàn thành sửa chữa?';
+        
+        popover.classList.add('active');
+        
+        setTimeout(() => {
+            window.addEventListener('click', handleOutsideClick);
+        }, 10);
+    }
+
+    function closePopover() {
+        document.getElementById('confirmPopover').classList.remove('active');
+        window.removeEventListener('click', handleOutsideClick);
+    }
+
+    function handleOutsideClick(e) {
+        const popover = document.getElementById('confirmPopover');
+        if (!popover.contains(e.target) && e.target !== currentPopoverBtn && !currentPopoverBtn.contains(e.target)) {
+            closePopover();
+        }
+    }
+
+    window.onclick = function(event) {
+        let modal = document.getElementById('reportModal');
+        if (event.target == modal) {
+            modal.style.display = "none";
+        }
+    }
+</script>
+{% endblock %}

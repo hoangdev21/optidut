@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+{% block title %}Thêm SV vào lớp {{ lop.ten_lop }} - OptiDUT{% endblock %}
+{% block extra_css %}
+<style>
+    .sv-select-list { max-height: 500px; overflow-y: auto; border: 1px solid var(--color-border); border-radius: 4px; }
+    .sv-item { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--color-border); transition: background 0.1s; }
+    .sv-item:hover { background: rgba(0,51,102,0.02); }
+    .sv-item:last-child { border-bottom: none; }
+    .sv-item input { accent-color: var(--color-primary); }
+    .sv-item .sv-name { font-weight: 500; }
+    .sv-item .sv-mssv { font-size: 13px; color: var(--color-text-secondary); }
+    .select-actions { display: flex; gap: 12px; margin: 16px 0; }
+    .search-box { margin-bottom: 12px; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Thêm sinh viên vào lớp: {{ lop.ten_lop }}</h1>
+</div>
+
+<form method="post">
+    {% csrf_token %}
+    
+    <div class="search-box">
+        <input type="text" id="searchSV" class="form-input" placeholder="Tìm theo tên hoặc MSSV..." onkeyup="filterSV()">
+    </div>
+
+    <div class="select-actions">
+        <button type="button" class="btn btn-outline btn-sm" onclick="selectAll()">Chọn tất cả</button>
+        <button type="button" class="btn btn-outline btn-sm" onclick="deselectAll()">Bỏ chọn tất cả</button>
+        <span style="color:var(--color-text-secondary); font-size: 13px; margin-left: auto;" id="countSelected">Đã chọn: 0</span>
+    </div>
+
+    <div class="sv-select-list" id="svList">
+        {% for sv in sv_chua_dk %}
+        <label class="sv-item" data-name="{{ sv.ho_ten|lower }}" data-mssv="{{ sv.ma_so|lower }}">
+            <input type="checkbox" name="sinh_vien_ids" value="{{ sv.pk }}" onchange="updateCount()">
+            <span class="sv-name">{{ sv.ho_ten }}</span>
+            <span class="sv-mssv">{{ sv.ma_so|default:"—" }}</span>
+        </label>
+        {% empty %}
+        <div style="padding: 20px; text-align: center; color: var(--color-text-secondary);">
+            Không còn sinh viên nào để thêm.
+        </div>
+        {% endfor %}
+    </div>
+
+    <div style="margin-top: 20px; display: flex; gap: 12px;">
+        <a href="{% url 'danh_sach_sv_lop' lop.pk %}" class="btn btn-outline">← Quay lại</a>
+        <button type="submit" class="btn btn-primary"><i class='bx bx-plus'></i> Thêm sinh viên đã chọn</button>
+    </div>
+</form>
+
+<script>
+function filterSV() {
+    const q = document.getElementById('searchSV').value.toLowerCase();
+    document.querySelectorAll('.sv-item').forEach(item => {
+        const name = item.dataset.name || '';
+        const mssv = item.dataset.mssv || '';
+        item.style.display = (name.includes(q) || mssv.includes(q)) ? '' : 'none';
+    });
+}
+function selectAll() {
+    document.querySelectorAll('.sv-item:not([style*="display: none"]) input').forEach(cb => cb.checked = true);
+    updateCount();
+}
+function deselectAll() {
+    document.querySelectorAll('.sv-item input').forEach(cb => cb.checked = false);
+    updateCount();
+}
+function updateCount() {
+    const count = document.querySelectorAll('.sv-item input:checked').length;
+    document.getElementById('countSelected').textContent = 'Đã chọn: ' + count;
+}
+</script>
+{% endblock %}

@@ -1,0 +1,217 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Dashboard Giáo vụ - OptiDUT{% endblock %}
+
+{% block extra_css %}
+<style>
+    .dashboard-container { max-width: 1600px; margin: 0 auto; }
+    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 24px; }
+    .stat-card-v2 { 
+        background: var(--color-white); 
+        padding: 24px; 
+        border-radius: 4px; 
+        border: 1px solid var(--color-border); 
+        display: flex; 
+        align-items: center; 
+        gap: 20px;
+        transition: transform 0.2s;
+    }
+    .stat-card-v2:hover { transform: translateY(-3px); box-shadow: 0 8px 15px rgba(0,0,0,0.05); }
+    .stat-icon { width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; }
+    .stat-icon img { width: 100%; height: 100%; object-fit: contain; }
+    .stat-details h3 { font-size: 24px; font-weight: 700; color: var(--color-text); margin-bottom: 2px; }
+    .stat-details p { font-size: 13px; color: var(--color-text-secondary); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    .dashboard-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; }
+    .dash-card { background: var(--color-white); border: 1px solid var(--color-border); border-radius: 4px; margin-bottom: 24px; overflow: hidden; }
+    .dash-card-header { padding: 16px 20px; border-bottom: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center; background: #F8FAFC; }
+    .dash-card-title { font-size: 15px; font-weight: 700; color: var(--color-primary); display: flex; align-items: center; gap: 10px; }
+    .dash-card-body { padding: 20px; }
+
+    .feed-item { display: flex; gap: 16px; padding: 12px 0; border-bottom: 1px solid #F1F5F9; }
+    .feed-item:last-child { border-bottom: none; }
+    .feed-icon { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 18px; }
+    .feed-content { flex: 1; min-width: 0; }
+    .feed-title { font-size: 13px; font-weight: 600; color: var(--color-text); margin-bottom: 2px; }
+    .feed-time { font-size: 11px; color: var(--color-text-secondary); }
+
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+    .bg-pending { background: #FFC107; }
+    .bg-approved { background: #28A745; }
+    .bg-rejected { background: #DC3545; }
+
+    @media (max-width: 1024px) {
+        .dashboard-grid { grid-template-columns: 1fr; }
+        .stats-row { grid-template-columns: repeat(2, 1fr); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="page-header" style="margin-bottom: 30px;">
+        <div>
+            <h1 class="page-title">Chào buổi sáng, {{ user.ho_ten }}!</h1>
+            <p style="color: var(--color-text-secondary); margin-top: 4px;">Bạn đang đăng nhập với vai trò: <strong>Giáo vụ khoa</strong></p>
+        </div>
+        <div class="header-actions">
+            <a href="{% url 'them_lich' %}" class="btn btn-primary"><i class='bx bx-calendar-plus'></i> Xếp lịch học</a>
+        </div>
+    </div>
+
+    <!-- Academic Stats -->
+    <div class="stats-row">
+        <div class="stat-card-v2">
+            <div class="stat-icon"><img src="{% static 'img/icons/lich_day.png' %}" alt="Lịch học"></div>
+            <div class="stat-details">
+                <h3>{{ lich_hom_nay }}</h3>
+                <p>Lịch học hôm nay</p>
+            </div>
+        </div>
+        <div class="stat-card-v2">
+            <div class="stat-icon"><img src="{% static 'img/icons/yeu_cau.png' %}" alt="Đợi duyệt"></div>
+            <div class="stat-details">
+                <h3>{{ yeu_cau_cho }}</h3>
+                <p>Yêu cầu chờ duyệt</p>
+            </div>
+        </div>
+        <div class="stat-card-v2">
+            <div class="stat-icon"><img src="{% static 'img/icons/thong_bao.png' %}" alt="Phòng trống"></div>
+            <div class="stat-details">
+                <h3>{{ phong_trong }}</h3>
+                <p>Phòng trống hiện tại</p>
+            </div>
+        </div>
+        <div class="stat-card-v2">
+            <div class="stat-icon"><img src="{% static 'img/icons/tiet_day.png' %}" alt="Tổng phòng"></div>
+            <div class="stat-details">
+                <h3>{{ tong_phong }}</h3>
+                <p>Tổng số phòng học</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="dashboard-grid">
+        <!-- Main Content -->
+        <div class="main-side">
+            <!-- Schedule Intensity Chart -->
+            <div class="dash-card">
+                <div class="dash-card-header">
+                    <h2 class="dash-card-title"><i class='bx bx-bar-chart-alt-2'></i> Mật độ giảng dạy (7 ngày tới)</h2>
+                </div>
+                <div class="dash-card-body">
+                    <canvas id="scheduleChart" height="100"></canvas>
+                </div>
+            </div>
+
+            <!-- Recent Requests -->
+            <div class="dash-card">
+                <div class="dash-card-header">
+                    <h2 class="dash-card-title"><i class='bx bx-git-pull-request'></i> Yêu cầu đổi lịch mới nhất</h2>
+                    <a href="{% url 'danh_sach_yeu_cau' %}" class="btn btn-sm btn-outline">Quản lý yêu cầu</a>
+                </div>
+                <div class="dash-card-body" style="padding: 0;">
+                    <table class="data-table" style="border: none;">
+                        <thead>
+                            <tr>
+                                <th>Giảng viên</th>
+                                <th>Môn học</th>
+                                <th>Loại</th>
+                                <th>Trạng thái</th>
+                                <th class="text-center">Duyệt</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for yc in recent_requests %}
+                            <tr>
+                                <td style="font-weight: 600;">{{ yc.nguoi_yeu_cau.ho_ten }}</td>
+                                <td style="font-size: 13px;">{{ yc.lich_hoc.mon_hoc }}</td>
+                                <td>{{ yc.get_loai_yeu_cau_display }}</td>
+                                <td>
+                                    <span class="status-dot {% if yc.trang_thai == 'cho_duyet' %}bg-pending{% elif yc.trang_thai == 'da_duyet' %}bg-approved{% else %}bg-rejected{% endif %}"></span>
+                                    {{ yc.get_trang_thai_display }}
+                                </td>
+                                <td class="text-center">
+                                    <a href="{% url 'duyet_yeu_cau' yc.pk %}" class="btn btn-sm btn-primary">Xem</a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="5" class="empty-state">Không có yêu cầu nào cần xử lý.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="side-panel">
+            <!-- Quick Actions -->
+            <div class="dash-card">
+                <div class="dash-card-header">
+                    <h2 class="dash-card-title"><i class='bx bx-compass'></i> Phím tắt nghiệp vụ</h2>
+                </div>
+                <div class="dash-card-body" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <a href="{% url 'them_lich' %}" class="btn btn-outline" style="justify-content: center; flex-direction: column; height: 80px; gap: 8px;"><i class='bx bx-calendar-plus' style="font-size: 24px;"></i><span>Xếp lịch</span></a>
+                    <a href="{% url 'them_lich_hang_loat' %}" class="btn btn-outline" style="justify-content: center; flex-direction: column; height: 80px; gap: 8px;"><i class='bx bx-spreadsheet' style="font-size: 24px;"></i><span>Hàng loạt</span></a>
+                    <a href="{% url 'danh_sach_yeu_cau' %}" class="btn btn-outline" style="justify-content: center; flex-direction: column; height: 80px; gap: 8px;"><i class='bx bx-check-shield' style="font-size: 24px;"></i><span>Duyệt lịch</span></a>
+                    <a href="{% url 'danh_sach_lop' %}" class="btn btn-outline" style="justify-content: center; flex-direction: column; height: 80px; gap: 8px;"><i class='bx bx-group' style="font-size: 24px;"></i><span>Quản lý lớp</span></a>
+                </div>
+            </div>
+
+            <!-- System Info -->
+            <div class="dash-card" style="background: #F8FAFC;">
+                <div class="dash-card-body">
+                    <h3 style="font-size: 14px; font-weight: 700; margin-bottom: 12px; color: var(--color-primary);">Tình trạng phòng học</h3>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px;">
+                        <span>Đang sử dụng:</span>
+                        <strong style="color: var(--color-accent);">{{ phong_dang_dung }}</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px;">
+                        <span>Phòng trống:</span>
+                        <strong style="color: var(--color-success);">{{ phong_trong }}</strong>
+                    </div>
+                    <div class="progress-bar" style="height: 6px; background: #E2E8F0; border-radius: 3px; margin-top: 12px; overflow: hidden;">
+                        <div style="width: {% widthratio phong_dang_dung tong_phong 100 %}%; height: 100%; background: var(--color-accent);"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{ chart_data|json_script:"sch-data" }}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const ctx = document.getElementById('scheduleChart').getContext('2d');
+    const chartData = JSON.parse(document.getElementById('chart-data' || 'sch-data').textContent);
+    
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: ['Hôm nay', 'Ngày mai', 'Ngày kia', '+3 ngày', '+4 ngày', '+5 ngày', '+6 ngày'],
+            datasets: [{
+                label: 'Số lớp học',
+                data: chartData,
+                borderColor: '#FF6600',
+                backgroundColor: 'rgba(255, 102, 0, 0.1)',
+                borderWidth: 3,
+                tension: 0.4,
+                fill: true,
+                pointBackgroundColor: '#003366',
+                pointBorderColor: '#fff',
+                pointRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, ticks: { stepSize: 5 } },
+                x: { grid: { display: false } }
+            }
+        }
+    });
+</script>
+{% endblock %}

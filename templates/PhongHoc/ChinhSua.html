@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+{% block title %}Sửa phòng - OptiDUT{% endblock %}
+{% block extra_css %}
+<style>
+    .room-edit-wrapper { max-width: 1200px; margin: 0 auto; }
+    .room-edit-grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 16px; }
+    .room-card { background: var(--color-white); border: 1px solid var(--color-border); border-radius: 2px; padding: 20px; }
+    .room-card h3 { font-size: 14px; color: var(--color-primary); margin-bottom: 12px; }
+    .room-info-row { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; padding: 6px 0; border-bottom: 1px dashed var(--color-border); }
+    .room-info-row:last-child { border-bottom: none; }
+    .room-info-label { color: var(--color-text-secondary); }
+    .room-info-value { color: var(--color-text); font-weight: 500; text-align: right; }
+    .equip-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .equip-table th, .equip-table td { border: 1px solid var(--color-border); padding: 6px 8px; }
+    .equip-table thead { background: #F5F7FA; }
+    @media (max-width: 992px) {
+        .room-edit-grid { grid-template-columns: 1fr; }
+    }
+</style>
+{% endblock %}
+{% block content %}
+<div class="room-edit-wrapper">
+    <div class="page-header">
+        <h1 class="page-title">Chỉnh sửa: {{ phong.ma_phong }}</h1>
+        <a href="{% url 'danh_sach_phong' %}" class="btn btn-outline">← Quay lại</a>
+    </div>
+    <div class="room-edit-grid">
+        <div class="room-card">
+            {% if form.errors %}<div class="form-errors"><ul>{% for field, errors in form.errors.items %}{% for e in errors %}<li>{{ e }}</li>{% endfor %}{% endfor %}</ul></div>{% endif %}
+            <form method="post">
+                {% csrf_token %}
+                <div class="form-row">
+                    <div class="form-group"><label class="form-label">Mã phòng</label>{{ form.ma_phong }}</div>
+                    <div class="form-group"><label class="form-label">Tên phòng</label>{{ form.ten_phong }}</div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label class="form-label">Tòa nhà</label>{{ form.toa_nha }}</div>
+                    <div class="form-group"><label class="form-label">Sức chứa</label>{{ form.suc_chua }}</div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label class="form-label">Loại phòng</label>{{ form.loai_phong }}</div>
+                    <div class="form-group"><label class="form-label">Trạng thái</label>{{ form.trang_thai }}</div>
+                </div>
+                <div class="form-group"><label class="form-label">Ghi chú</label>{{ form.ghi_chu }}</div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
+                    <a href="{% url 'danh_sach_phong' %}" class="btn btn-outline">Hủy</a>
+                </div>
+            </form>
+        </div>
+        <div class="room-card">
+            <h3>Thông tin phòng</h3>
+            <div class="room-info-row"><span class="room-info-label">Mã phòng</span><span class="room-info-value">{{ phong.ma_phong }}</span></div>
+            <div class="room-info-row"><span class="room-info-label">Tên phòng</span><span class="room-info-value">{{ phong.ten_phong }}</span></div>
+            <div class="room-info-row"><span class="room-info-label">Tòa nhà</span><span class="room-info-value">{{ phong.toa_nha }}</span></div>
+            <div class="room-info-row"><span class="room-info-label">Sức chứa</span><span class="room-info-value">{{ phong.suc_chua }}</span></div>
+            <div class="room-info-row"><span class="room-info-label">Loại phòng</span><span class="room-info-value">{{ phong.get_loai_phong_display }}</span></div>
+            <div class="room-info-row">
+                <span class="room-info-label">Trạng thái</span>
+                <span class="room-info-value">
+                    {% if phong.trang_thai == 'trong' %}<span class="badge badge-success">Trống</span>
+                    {% elif phong.trang_thai == 'dang_su_dung' %}<span class="badge badge-accent">Đang dùng</span>
+                    {% else %}<span class="badge badge-danger">Bảo trì</span>{% endif %}
+                </span>
+            </div>
+
+            <h3 style="margin-top:16px;">Thiết bị trong phòng</h3>
+            <table class="equip-table">
+                <thead>
+                    <tr><th>Thiết bị</th><th class="text-center">Số lượng</th><th class="text-center">Trạng thái</th><th>Ghi chú</th></tr>
+                </thead>
+                <tbody>
+                    {% for tb in thiet_bis %}
+                    <tr>
+                        <td>{{ tb.ten_thiet_bi }}</td>
+                        <td class="text-center">{{ tb.so_luong }}</td>
+                        <td class="text-center">
+                            {% if tb.trang_thai == 'hoat_dong' %}Hoạt động
+                            {% elif tb.trang_thai == 'hong' %}Hỏng
+                            {% else %}Bảo trì{% endif %}
+                        </td>
+                        <td>{{ tb.ghi_chu|default:"-" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="text-center">Chưa có thiết bị nào.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

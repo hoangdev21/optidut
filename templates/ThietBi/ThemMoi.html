@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block title %}Thêm thiết bị - OptiDUT{% endblock %}
+{% block content %}
+<div class="page-header"><h1 class="page-title">Thêm thiết bị mới</h1></div>
+<div class="form-container">
+    {% if form.errors %}<div class="form-errors"><ul>{% for field, errors in form.errors.items %}{% for e in errors %}<li>{{ e }}</li>{% endfor %}{% endfor %}</ul></div>{% endif %}
+    <form method="post">{% csrf_token %}
+        <div class="form-group"><label class="form-label">Tên thiết bị</label>{{ form.ten_thiet_bi }}</div>
+        <div class="form-row">
+            <div class="form-group"><label class="form-label">Phòng học</label>{{ form.phong_hoc }}</div>
+            <div class="form-group"><label class="form-label">Số lượng</label>{{ form.so_luong }}</div>
+        </div>
+        <div class="form-group"><label class="form-label">Trạng thái</label>{{ form.trang_thai }}</div>
+        <div class="form-group"><label class="form-label">Ghi chú</label>{{ form.ghi_chu }}</div>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-accent">Thêm thiết bị</button>
+            <a href="{% url 'danh_sach_thiet_bi' %}" class="btn btn-outline">Hủy</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

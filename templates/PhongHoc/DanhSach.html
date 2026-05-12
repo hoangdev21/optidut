@@ -1,0 +1,148 @@
+{% extends 'base.html' %}
+{% block title %}Phòng học - OptiDUT{% endblock %}
+{% block extra_css %}
+<style>
+    .week-nav { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 8px 0 12px; flex-wrap: wrap; position: relative; z-index: 2; }
+    .week-nav .btn { padding: 6px 12px; font-size: 12px; }
+    .week-nav .btn.btn-outline:hover { background: #F5F7FA; border-color: var(--color-primary); color: var(--color-primary); }
+    .week-label { font-size: 14px; font-weight: 600; color: var(--color-text); min-width: 220px; text-align: center; }
+    .week-label small { display: block; font-size: 12px; font-weight: 400; color: var(--color-text-secondary); }
+    .date-actions { display: flex; justify-content: center; align-items: center; gap: 8px; flex-wrap: wrap; margin: 6px 0 16px; position: relative; z-index: 2; }
+    .date-actions .btn { padding: 6px 12px; font-size: 12px; }
+    .date-actions .btn.btn-outline:hover { background: #F5F7FA; border-color: var(--color-primary); color: var(--color-primary); }
+    .date-actions .btn.is-active { background: var(--color-primary); border-color: var(--color-primary); color: var(--color-white); }
+    .date-actions .btn.is-active:hover { background: var(--color-primary-hover); border-color: var(--color-primary-hover); color: var(--color-white); }
+    .date-label { font-size: 12px; color: var(--color-text-secondary); margin-bottom: 6px; text-align: center; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Danh sách phòng học</h1>
+    {% if user.la_quan_tri or user.la_giao_vu %}
+    <a href="{% url 'them_phong' %}" class="btn btn-accent">+ Thêm phòng</a>
+    {% endif %}
+</div>
+
+<div class="date-label">Hiển thị theo ngày: {{ ngay_loc|date:"d/m/Y" }}</div>
+<div class="week-nav">
+    <a href="?ngay={{ tuan_truoc|date:'Y-m-d' }}{% for key, value in request.GET.items %}{% if key != 'ngay' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="btn btn-outline">◀ Tuần trước</a>
+    <div class="week-label">
+        {{ dau_tuan|date:"d/m" }} — {{ cuoi_tuan|date:"d/m/Y" }}
+        <small>{% if hom_nay >= dau_tuan and hom_nay <= cuoi_tuan %}Tuần hiện tại{% endif %}</small>
+    </div>
+    <a href="?ngay={{ tuan_sau|date:'Y-m-d' }}{% for key, value in request.GET.items %}{% if key != 'ngay' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="btn btn-outline">Tuần sau ▶</a>
+    <a href="?ngay={{ hom_nay|date:'Y-m-d' }}{% for key, value in request.GET.items %}{% if key != 'ngay' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="btn btn-primary">↩ Tuần này</a>
+</div>
+<div class="date-actions">
+    <a href="?ngay={{ hom_qua|date:'Y-m-d' }}{% for key, value in request.GET.items %}{% if key != 'ngay' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="btn btn-outline{% if ngay_loc == hom_qua %} is-active{% endif %}">Hôm qua</a>
+    <a href="?ngay={{ hom_nay|date:'Y-m-d' }}{% for key, value in request.GET.items %}{% if key != 'ngay' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="btn btn-outline{% if ngay_loc == hom_nay %} is-active{% endif %}">Hôm nay</a>
+    <a href="?ngay={{ hom_sau|date:'Y-m-d' }}{% for key, value in request.GET.items %}{% if key != 'ngay' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="btn btn-outline{% if ngay_loc == hom_sau %} is-active{% endif %}">Ngày mai</a>
+    <a href="?ngay={{ ngay_truoc|date:'Y-m-d' }}{% for key, value in request.GET.items %}{% if key != 'ngay' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="btn btn-outline{% if ngay_loc == ngay_truoc %} is-active{% endif %}">Ngày trước</a>
+    <a href="?ngay={{ ngay_sau|date:'Y-m-d' }}{% for key, value in request.GET.items %}{% if key != 'ngay' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="btn btn-outline{% if ngay_loc == ngay_sau %} is-active{% endif %}">Ngày sau</a>
+</div>
+
+<form method="get" class="filter-bar">
+    <div class="filter-group">
+        <label>Tìm kiếm</label>
+        <input type="text" name="q" value="{{ tu_khoa }}" class="form-input" placeholder="Mã phòng, tên phòng...">
+    </div>
+    <div class="filter-group">
+        <label>Ngày</label>
+        <input type="date" name="ngay" value="{{ ngay_loc|date:'Y-m-d' }}" class="form-input">
+    </div>
+    <div class="filter-group">
+        <label>Tòa nhà</label>
+        <select name="toa_nha" class="form-select">
+            <option value="">Tất cả</option>
+            {% for tn in ds_toa_nha %}
+            <option value="{{ tn }}" {% if tn == toa_nha_loc %}selected{% endif %}>{{ tn }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="filter-group">
+        <label>Loại phòng</label>
+        <select name="loai_phong" class="form-select">
+            <option value="">Tất cả</option>
+            {% for value, label in loai_phong_choices %}
+            <option value="{{ value }}" {% if value == loai_phong_loc %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="filter-group">
+        <label>Trạng thái</label>
+        <select name="trang_thai" class="form-select">
+            <option value="">Tất cả</option>
+            {% for value, label in trang_thai_choices %}
+            <option value="{{ value }}" {% if value == trang_thai_loc %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="filter-group">
+        <label>Hiển thị</label>
+        <select name="page_size" class="form-select" onchange="this.form.submit()">
+            <option value="10" {% if request.GET.page_size == '10' %}selected{% endif %}>10</option>
+            <option value="20" {% if request.GET.page_size == '20' or not request.GET.page_size %}selected{% endif %}>20</option>
+            <option value="30" {% if request.GET.page_size == '30' %}selected{% endif %}>30</option>
+            <option value="50" {% if request.GET.page_size == '50' %}selected{% endif %}>50</option>
+            <option value="70" {% if request.GET.page_size == '70' %}selected{% endif %}>70</option>
+        </select>
+    </div>
+    <div class="filter-group">
+        <label>&nbsp;</label>
+        <button type="submit" class="btn btn-primary">Lọc</button>
+    </div>
+</form>
+
+<div class="table-container">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Mã phòng</th>
+                <th>Tên phòng</th>
+                <th>Tòa nhà</th>
+                <th>Sức chứa</th>
+                <th>Loại</th>
+                <th>Trạng thái</th>
+                {% if user.la_quan_tri or user.la_giao_vu %}
+                <th>Hành động</th>
+                {% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in phong_hocs %}
+            <tr>
+                <td><a href="{% url 'chi_tiet_phong' p.pk %}"><strong style="color: #000;">{{ p.ma_phong }}</strong></a></td>
+                <td>{{ p.ten_phong }}</td>
+                <td>{{ p.toa_nha }}</td>
+                <td>{{ p.suc_chua }}</td>
+                <td>{{ p.get_loai_phong_display }}</td>
+                <td>
+                    {% if p.trang_thai == 'trong' %}
+                    <span class="badge badge-success">Trống</span>
+                    {% elif p.trang_thai == 'dang_su_dung' %}
+                    <span class="badge badge-accent">Đang dùng</span>
+                    {% else %}
+                    <span class="badge badge-danger">Bảo trì</span>
+                    {% endif %}
+                </td>
+                {% if user.la_quan_tri or user.la_giao_vu %}
+                <td>
+                    <div class="table-actions" style="display: flex; gap: 8px; justify-content: center;">
+                        <a href="{% url 'chinh_sua_phong' p.pk %}" class="btn btn-sm btn-outline" title="Chỉnh sửa">
+                            <i class='bx bx-edit' style="font-size: 16px; color: var(--color-primary);"></i>
+                        </a>
+                        <a href="{% url 'xoa_phong' p.pk %}" class="btn btn-sm btn-outline" title="Xóa" onclick="return confirm('Bạn có chắc chắn muốn xóa?')">
+                            <i class='bx bx-trash' style="font-size: 16px; color: var(--color-danger);"></i>
+                        </a>
+                    </div>
+                </td>
+                {% endif %}
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" class="empty-state">Không có phòng học nào.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% with page_obj=phong_hocs %}{% include 'components/Pagination.html' %}{% endwith %}
+{% endblock %}

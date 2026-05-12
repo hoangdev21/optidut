@@ -1,0 +1,356 @@
+/* ══════════════════════════════════════
+   BASE.CSS - HỆ THỐNG OPTIDUT
+   Tone màu: #003366, #FFFFFF, #FF6600
+   Quy tắc: KHÔNG gradient, hạn chế border-radius
+   ══════════════════════════════════════ */
+
+/* ── CSS Variables ── */
+:root {
+    --color-primary: #003366;
+    --color-primary-hover: #004080;
+    --color-accent: #FF6600;
+    --color-accent-hover: #E55A00;
+    --color-white: #FFFFFF;
+    --color-bg: #F5F7FA;
+    --color-border: #DEE2E6;
+    --color-text: #212529;
+    --color-text-secondary: #6C757D;
+    --color-success: #28A745;
+    --color-danger: #DC3545;
+    --color-warning: #FFC107;
+    --font-family: 'Segoe UI', 'Roboto', sans-serif;
+    --font-size-base: 14px;
+    --font-size-sm: 13px;
+    --font-size-lg: 16px;
+    --sidebar-width: 260px;
+    --sidebar-collapsed-width: 70px;
+    --header-height: 64px;
+}
+
+/* ── Reset ── */
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    font-size: var(--font-size-base);
+    -webkit-font-smoothing: antialiased;
+}
+
+body {
+    font-family: var(--font-family);
+    color: var(--color-text);
+    background: var(--color-bg);
+    line-height: 1.5;
+    overflow-x: hidden;
+}
+
+a {
+    color: var(--color-primary);
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+a:hover {
+    color: var(--color-primary-hover);
+}
+
+/* ── Layout ── */
+.layout {
+    display: flex;
+    min-height: 100vh;
+}
+
+.main-content {
+    flex: 1;
+    margin-left: var(--sidebar-width);
+    padding-top: var(--header-height);
+    transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    min-width: 0;
+}
+
+.layout.sidebar-collapsed .main-content {
+    margin-left: var(--sidebar-collapsed-width);
+}
+
+.page-content {
+    padding: 30px 40px 80px; /* Wider padding for premium look */
+    max-width: 1600px;
+    margin: 0 auto;
+}
+
+/* ── Page Header ── */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.page-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--color-primary);
+}
+
+/* ── Cards ── */
+.card {
+    background: var(--color-white);
+    border: 1px solid var(--color-border);
+    border-radius: 3px;
+    padding: 20px;
+    margin-bottom: 16px;
+}
+
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.stat-card {
+    background: var(--color-white);
+    border: 1px solid var(--color-border);
+    border-radius: 3px;
+    padding: 20px;
+    text-align: center;
+    border-top: 3px solid var(--color-primary);
+}
+
+.stat-card.accent {
+    border-top-color: var(--color-accent);
+}
+
+.stat-card.success {
+    border-top-color: var(--color-success);
+}
+
+.stat-card.danger {
+    border-top-color: var(--color-danger);
+}
+
+.stat-card.warning {
+    border-top-color: var(--color-warning);
+}
+
+.stat-number {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--color-primary);
+    display: block;
+}
+
+.stat-label {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+    margin-top: 4px;
+}
+
+/* ── Messages / Alerts ── */
+.messages {
+    list-style: none;
+    margin-bottom: 16px;
+}
+
+.message {
+    padding: 10px 16px;
+    border-radius: 2px;
+    margin-bottom: 8px;
+    font-size: var(--font-size-sm);
+    border: 1px solid;
+}
+
+.message.success {
+    background: #D4EDDA;
+    border-color: #C3E6CB;
+    color: #155724;
+}
+
+.message.error {
+    background: #F8D7DA;
+    border-color: #F5C6CB;
+    color: #721C24;
+}
+
+.message.info {
+    background: #D1ECF1;
+    border-color: #BEE5EB;
+    color: #0C5460;
+}
+
+.message.warning {
+    background: #FFF3CD;
+    border-color: #FFEEBA;
+    color: #856404;
+}
+
+/* ── Badges ── */
+.badge {
+    display: inline-block;
+    padding: 2px 8px;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 2px;
+    line-height: 1.4;
+}
+
+.badge-success {
+    background: var(--color-success);
+    color: var(--color-white);
+}
+
+.badge-danger {
+    background: var(--color-danger);
+    color: var(--color-white);
+}
+
+.badge-warning {
+    background: var(--color-warning);
+    color: var(--color-text);
+}
+
+.badge-primary {
+    background: var(--color-primary);
+    color: var(--color-white);
+}
+
+.badge-accent {
+    background: var(--color-accent);
+    color: var(--color-white);
+}
+
+/* ── Buttons ── */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    font-size: var(--font-size-sm);
+    font-family: var(--font-family);
+    font-weight: 500;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background-color 0.15s, border-color 0.15s;
+    text-decoration: none;
+    line-height: 1.4;
+}
+
+.btn:hover {
+    opacity: 0.95;
+}
+
+.btn-primary {
+    background: var(--color-primary);
+    color: var(--color-white);
+}
+
+.btn-primary:hover {
+    background: var(--color-primary-hover);
+    color: var(--color-white);
+}
+
+.btn-accent {
+    background: var(--color-accent);
+    color: var(--color-white);
+}
+
+.btn-accent:hover {
+    background: var(--color-accent-hover);
+    color: var(--color-white);
+}
+
+.btn-danger {
+    background: var(--color-danger);
+    color: var(--color-white);
+}
+
+.btn-danger:hover {
+    background: #C82333;
+    color: var(--color-white);
+}
+
+.btn-outline {
+    background: transparent;
+    color: var(--color-primary);
+    border-color: var(--color-border);
+}
+
+.btn-outline:hover {
+    background: var(--color-bg);
+    color: var(--color-primary);
+}
+
+.btn-sm {
+    padding: 4px 10px;
+    font-size: 12px;
+}
+
+.btn-group {
+    display: flex;
+    gap: 6px;
+}
+
+/* ── Empty State ── */
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--color-text-secondary);
+}
+
+.empty-state-icon {
+    font-size: 40px;
+    margin-bottom: 12px;
+}
+
+/* ── Login Page ── */
+.login-page {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: var(--color-bg);
+}
+
+.login-box {
+    background: var(--color-white);
+    border: 1px solid var(--color-border);
+    border-radius: 3px;
+    padding: 40px;
+    width: 100%;
+    max-width: 400px;
+}
+
+.login-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.login-header h1 {
+    font-size: 22px;
+    color: var(--color-primary);
+    margin-top: 12px;
+    font-weight: 600;
+}
+
+.login-header p {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+    margin-top: 4px;
+}
+
+.login-logo {
+    width: 60px;
+    height: 60px;
+}
+
+.login-btn {
+    width: 100%;
+    padding: 10px;
+    font-size: var(--font-size-base);
+}

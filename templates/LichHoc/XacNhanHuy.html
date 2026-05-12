@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block title %}Hủy lịch - OptiDUT{% endblock %}
+{% block content %}
+<div class="confirm-box">
+    <h2>⚠ Xác nhận hủy lịch</h2>
+    <p>Bạn có chắc chắn muốn hủy lịch học <strong>{{ lich.mon_hoc }}</strong> - lớp {{ lich.ma_lop }}<br>Ngày {{ lich.ngay_hoc|date:"d/m/Y" }}, tiết {{ lich.tiet_bat_dau }}-{{ lich.tiet_ket_thuc }}?</p>
+    <form method="post">{% csrf_token %}
+        <div class="confirm-actions">
+            <button type="submit" class="btn btn-danger">Hủy lịch</button>
+            <a href="{% url 'danh_sach_lich' %}" class="btn btn-outline">Quay lại</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

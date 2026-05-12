@@ -1,0 +1,209 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Dashboard Quản trị - OptiDUT{% endblock %}
+
+{% block extra_css %}
+<style>
+    .dashboard-container { max-width: 1600px; margin: 0 auto; }
+    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 24px; }
+    .stat-card-v2 { 
+        background: var(--color-white); 
+        padding: 24px; 
+        border-radius: 4px; 
+        border: 1px solid var(--color-border); 
+        display: flex; 
+        align-items: center; 
+        gap: 20px;
+        transition: transform 0.2s;
+    }
+    .stat-card-v2:hover { transform: translateY(-3px); box-shadow: 0 8px 15px rgba(0,0,0,0.05); }
+    .stat-icon { width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; }
+    .stat-icon img { width: 100%; height: 100%; object-fit: contain; }
+    .stat-details h3 { font-size: 24px; font-weight: 700; color: var(--color-text); margin-bottom: 2px; }
+    .stat-details p { font-size: 13px; color: var(--color-text-secondary); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    .dashboard-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; }
+    .dash-card { background: var(--color-white); border: 1px solid var(--color-border); border-radius: 4px; margin-bottom: 24px; overflow: hidden; }
+    .dash-card-header { padding: 16px 20px; border-bottom: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center; background: #F8FAFC; }
+    .dash-card-title { font-size: 15px; font-weight: 700; color: var(--color-primary); display: flex; align-items: center; gap: 10px; }
+    .dash-card-body { padding: 20px; }
+
+    .feed-item { display: flex; gap: 16px; padding: 12px 0; border-bottom: 1px solid #F1F5F9; }
+    .feed-item:last-child { border-bottom: none; }
+    .feed-icon { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 18px; }
+    .feed-content { flex: 1; min-width: 0; }
+    .feed-title { font-size: 13px; font-weight: 600; color: var(--color-text); margin-bottom: 2px; }
+    .feed-time { font-size: 11px; color: var(--color-text-secondary); }
+
+    .icon-blue { background: #EBF2FF; color: #003366; }
+    .icon-red { background: #FDEBEB; color: #DC3545; }
+
+    @media (max-width: 1024px) {
+        .dashboard-grid { grid-template-columns: 1fr; }
+        .stats-row { grid-template-columns: repeat(2, 1fr); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="page-header" style="margin-bottom: 30px;">
+        <div>
+            <h1 class="page-title">Hệ thống Quản trị, {{ user.ho_ten }}</h1>
+            <p style="color: var(--color-text-secondary); margin-top: 4px;">Trạng thái hệ thống: <span style="color: var(--color-success); font-weight: 600;">● Hoạt động bình thường</span></p>
+        </div>
+        <div class="header-actions">
+            <a href="{% url 'danh_sach_nguoi_dung' %}" class="btn btn-primary"><i class='bx bx-user-plus'></i> Quản lý tài khoản</a>
+        </div>
+    </div>
+
+    <!-- Admin Stats -->
+    <div class="stats-row">
+        <div class="stat-card-v2">
+            <div class="stat-icon"><img src="{% static 'img/icons/yeu_cau.png' %}" alt="Tài khoản"></div>
+            <div class="stat-details">
+                <h3>{{ tong_tai_khoan }}</h3>
+                <p>Tổng tài khoản</p>
+            </div>
+        </div>
+        <div class="stat-card-v2">
+            <div class="stat-icon"><img src="{% static 'img/icons/lich_day.png' %}" alt="Phòng"></div>
+            <div class="stat-details">
+                <h3>{{ tong_phong }}</h3>
+                <p>Tổng phòng học</p>
+            </div>
+        </div>
+        <div class="stat-card-v2">
+            <div class="stat-icon"><img src="{% static 'img/icons/thong_bao.png' %}" alt="Bảo trì"></div>
+            <div class="stat-details">
+                <h3>{{ phong_bao_tri }}</h3>
+                <p>Phòng bảo trì</p>
+            </div>
+        </div>
+        <div class="stat-card-v2">
+            <div class="stat-icon"><img src="{% static 'img/icons/tiet_day.png' %}" alt="Thiết bị"></div>
+            <div class="stat-details">
+                <h3>{{ thiet_bi_hong }}</h3>
+                <p>Thiết bị hỏng</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="dashboard-grid">
+        <!-- Main Content -->
+        <div class="main-side">
+            <!-- System Load Chart -->
+            <div class="dash-card">
+                <div class="dash-card-header">
+                    <h2 class="dash-card-title"><i class='bx bx-bar-chart-square'></i> Mật độ lịch học toàn hệ thống (7 ngày tới)</h2>
+                </div>
+                <div class="dash-card-body">
+                    <canvas id="systemChart" height="100"></canvas>
+                </div>
+            </div>
+
+            <!-- Recent Users -->
+            <div class="dash-card">
+                <div class="dash-card-header">
+                    <h2 class="dash-card-title"><i class='bx bx-group'></i> Người dùng mới đăng ký</h2>
+                </div>
+                <div class="dash-card-body" style="padding: 0;">
+                    <table class="data-table" style="border: none;">
+                        <thead>
+                            <tr>
+                                <th>Họ tên</th>
+                                <th>Vai trò</th>
+                                <th>Ngày tham gia</th>
+                                <th class="text-center">Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for u in recent_users %}
+                            <tr>
+                                <td style="font-weight: 600;">{{ u.ho_ten }}</td>
+                                <td><span class="badge badge-outline">{{ u.get_vai_tro_display }}</span></td>
+                                <td style="font-size: 13px;">{{ u.date_joined|date:"d/m/Y H:i" }}</td>
+                                <td class="text-center">
+                                    <a href="{% url 'chinh_sua_nguoi_dung' u.pk %}" class="btn btn-sm btn-outline">Sửa</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="side-panel">
+            <!-- Quick Management -->
+            <div class="dash-card">
+                <div class="dash-card-header">
+                    <h2 class="dash-card-title"><i class='bx bx-wrench'></i> Công cụ quản trị</h2>
+                </div>
+                <div class="dash-card-body" style="display: grid; grid-template-columns: 1fr; gap: 10px;">
+                    <a href="{% url 'them_nguoi_dung' %}" class="btn btn-outline" style="justify-content: flex-start;"><i class='bx bx-user-plus'></i> Thêm người dùng mới</a>
+                    <a href="{% url 'them_phong' %}" class="btn btn-outline" style="justify-content: flex-start;"><i class='bx bx-plus-circle'></i> Thêm phòng học mới</a>
+                    <a href="{% url 'them_thiet_bi' %}" class="btn btn-outline" style="justify-content: flex-start;"><i class='bx bx-desktop'></i> Đăng ký thiết bị mới</a>
+                    <a href="{% url 'thong_ke_tong_quan' %}" class="btn btn-outline" style="justify-content: flex-start;"><i class='bx bx-pie-chart-alt-2'></i> Báo cáo hệ thống</a>
+                </div>
+            </div>
+
+            <!-- Recent Notifications -->
+            <div class="dash-card">
+                <div class="dash-card-header">
+                    <h2 class="dash-card-title"><i class='bx bx-notification'></i> Thông báo đã gửi</h2>
+                </div>
+                <div class="dash-card-body">
+                    {% for tb in recent_notifications %}
+                    <div class="feed-item">
+                        <div class="feed-icon icon-blue"><i class='bx bx-info-circle'></i></div>
+                        <div class="feed-content">
+                            <div class="feed-title">{{ tb.tieu_de }}</div>
+                            <div class="feed-time">Đến: {{ tb.nguoi_nhan.ho_ten|default:"Tất cả" }} • {{ tb.ngay_tao|date:"d/m" }}</div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <p class="empty-state">Chưa có thông báo nào.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{ chart_data|json_script:"reg-data" }}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const ctx = document.getElementById('systemChart').getContext('2d');
+    const chartData = JSON.parse(document.getElementById('reg-data').textContent);
+    
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: ['Hôm nay', 'Ngày mai', 'Ngày kia', '+3 ngày', '+4 ngày', '+5 ngày', '+6 ngày'],
+            datasets: [{
+                label: 'Tổng số lớp học',
+                data: chartData,
+                borderColor: '#003366',
+                backgroundColor: 'rgba(0, 51, 102, 0.1)',
+                borderWidth: 3,
+                tension: 0.4,
+                fill: true,
+                pointBackgroundColor: '#FF6600',
+                pointBorderColor: '#fff',
+                pointRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, ticks: { stepSize: 5 } },
+                x: { grid: { display: false } }
+            }
+        }
+    });
+</script>
+{% endblock %}

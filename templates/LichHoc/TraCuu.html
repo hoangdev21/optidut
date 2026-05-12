@@ -1,0 +1,281 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Tra cứu phòng trống - OptiDUT{% endblock %}
+
+{% block extra_css %}
+<style>
+    .search-wrapper { max-width: 1600px; margin: 0 auto; padding-bottom: 60px; }
+    
+    /* Header styling */
+    .search-header { 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center; 
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--color-border);
+    }
+    .search-title { display: flex; align-items: center; gap: 12px; font-size: 24px; color: var(--color-text-primary); font-weight: 700; }
+    .search-title i { color: var(--color-primary); font-size: 28px; }
+
+    /* Filter Bar - Professional & Nowrap */
+    .filter-bar-v2 {
+        background: var(--color-white);
+        padding: 24px;
+        border-radius: 2px;
+        border: 1px solid var(--color-border);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        margin-bottom: 24px;
+    }
+    .filter-grid {
+        display: flex;
+        align-items: flex-end;
+        gap: 16px;
+        flex-wrap: nowrap;
+    }
+    .filter-group { flex-shrink: 0; }
+    .filter-group-grow { flex-grow: 1; }
+    
+    .filter-label { 
+        font-size: 12px; 
+        font-weight: 600; 
+        color: #64748b; 
+        margin-bottom: 6px; 
+        display: block;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .filter-input {
+        height: 40px;
+        border: 1px solid #e2e8f0;
+        border-radius: 2px;
+        padding: 0 12px;
+        font-size: 14px;
+        color: #1e293b;
+        width: 100%;
+        transition: all 0.2s;
+    }
+    .filter-input:focus { border-color: var(--color-primary); outline: none; box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.1); }
+
+    /* Table styling */
+    .result-container {
+        background: var(--color-white);
+        border-radius: 2px;
+        border: 1px solid var(--color-border);
+        overflow: hidden;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        padding-bottom: 30px;
+    }
+    .result-header {
+        padding: 16px 24px;
+        background: #f8fafc;
+        border-bottom: 1px solid var(--color-border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .result-count { font-size: 14px; font-weight: 600; color: #64748b; }
+    
+    .room-badge {
+        color: #000;
+        font-weight: 700;
+        font-size: 14px;
+        background: transparent;
+        padding: 0;
+    }
+
+    .btn-action {
+        width: 34px;
+        height: 34px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 2px;
+        border: 1px solid #e2e8f0;
+        background: #fff;
+        color: #64748b;
+        transition: all 0.2s;
+        cursor: pointer;
+    }
+    .btn-action:hover { background: var(--color-primary); color: white; border-color: var(--color-primary); }
+
+    @media (max-width: 1200px) {
+        .filter-grid { flex-wrap: wrap; }
+        .filter-group { flex: 1 1 200px; }
+        .btn-submit-wrapper { width: 100%; text-align: right; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="search-wrapper">
+    <div class="search-header">
+        <h1 class="search-title">
+            <i class='bx bx-search-alt'></i> Tra cứu phòng trống
+        </h1>
+        <div class="search-actions">
+            <button class="btn btn-outline" onclick="setToday()">Hôm nay</button>
+            <button class="btn btn-outline" onclick="setTomorrow()">Ngày mai</button>
+        </div>
+    </div>
+
+    <!-- Professional Filter Bar -->
+    <div class="filter-bar-v2">
+        <form method="get" id="searchForm">
+            <div class="filter-grid">
+                <div class="filter-group" style="width: 180px;">
+                    <label class="filter-label">Ngày tra cứu</label>
+                    <input type="date" name="ngay" id="inputNgay" value="{{ ngay }}" class="filter-input" required>
+                </div>
+                <div class="filter-group" style="width: 120px;">
+                    <label class="filter-label">Tiết bắt đầu</label>
+                    <select name="tiet_bd" class="filter-input" required>
+                        {% for i in "123456789"|make_list %}<option value="{{ forloop.counter }}" {% if tiet_bd == forloop.counter|stringformat:"s" %}selected{% endif %}>Tiết {{ forloop.counter }}</option>{% endfor %}
+                        <option value="10" {% if tiet_bd == "10" %}selected{% endif %}>Tiết 10</option>
+                        <option value="11" {% if tiet_bd == "11" %}selected{% endif %}>Tiết 11</option>
+                        <option value="12" {% if tiet_bd == "12" %}selected{% endif %}>Tiết 12</option>
+                        <option value="13" {% if tiet_bd == "13" %}selected{% endif %}>Tiết 13</option>
+                        <option value="14" {% if tiet_bd == "14" %}selected{% endif %}>Tiết 14</option>
+                    </select>
+                </div>
+                <div class="filter-group" style="width: 120px;">
+                    <label class="filter-label">Tiết kết thúc</label>
+                    <select name="tiet_kt" class="filter-input" required>
+                        {% for i in "123456789"|make_list %}<option value="{{ forloop.counter }}" {% if tiet_kt == forloop.counter|stringformat:"s" %}selected{% endif %}>Tiết {{ forloop.counter }}</option>{% endfor %}
+                        <option value="10" {% if tiet_kt == "10" %}selected{% endif %}>Tiết 10</option>
+                        <option value="11" {% if tiet_kt == "11" %}selected{% endif %}>Tiết 11</option>
+                        <option value="12" {% if tiet_kt == "12" %}selected{% endif %}>Tiết 12</option>
+                        <option value="13" {% if tiet_kt == "13" %}selected{% endif %}>Tiết 13</option>
+                        <option value="14" {% if tiet_kt == "14" %}selected{% endif %}>Tiết 14</option>
+                    </select>
+                </div>
+                <div class="filter-group" style="width: 140px;">
+                    <label class="filter-label">Tòa nhà</label>
+                    <select name="toa_nha" class="filter-input">
+                        <option value="">Tất cả tòa</option>
+                        {% for t in ds_toa_nha %}
+                        <option value="{{ t }}" {% if toa_nha_loc == t %}selected{% endif %}>Tòa {{ t }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group filter-group-grow">
+                    <label class="filter-label">Loại phòng</label>
+                    <select name="loai_phong" class="filter-input">
+                        <option value="">Tất cả loại phòng</option>
+                        {% for val, label in loai_phong_choices %}
+                        <option value="{{ val }}" {% if loai_phong_loc == val %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group" style="width: 100px;">
+                    <label class="filter-label">Hiển thị</label>
+                    <select name="page_size" class="filter-input" onchange="this.form.submit()">
+                        <option value="10" {% if page_size == '10' %}selected{% endif %}>10</option>
+                        <option value="30" {% if page_size == '30' %}selected{% endif %}>30</option>
+                        <option value="50" {% if page_size == '50' %}selected{% endif %}>50</option>
+                        <option value="70" {% if page_size == '70' %}selected{% endif %}>70</option>
+                    </select>
+                </div>
+                <div class="filter-group btn-submit-wrapper">
+                    <button type="submit" class="btn btn-primary" style="height: 40px; padding: 0 24px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+                        <i class='bx bx-search'></i> Tìm kiếm
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Result Section -->
+    {% if ket_qua is not None %}
+    <div class="result-container">
+        <div class="result-header">
+            <div class="result-count">
+                <i class='bx bx-info-circle'></i> Tìm thấy <strong>{{ ket_qua|length }}</strong> phòng trống khả dụng
+            </div>
+            <div style="font-size: 13px; color: #64748b;">
+                Thời gian: <strong>{{ ngay }}</strong> (Tiết {{ tiet_bd }} - {{ tiet_kt }})
+            </div>
+        </div>
+        
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th class="text-center" width="60">STT</th>
+                        <th>Mã phòng</th>
+                        <th>Tên phòng</th>
+                        <th class="text-center">Tòa nhà</th>
+                        <th class="text-center">Sức chứa</th>
+                        <th>Loại phòng</th>
+                        <th class="text-center">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in ket_qua %}
+                    <tr>
+                        <td class="text-center">{{ forloop.counter }}</td>
+                        <td><span class="room-badge">{{ p.ma_phong }}</span></td>
+                        <td style="font-weight: 600; color: var(--color-text-primary);">{{ p.ten_phong }}</td>
+                        <td class="text-center">{{ p.toa_nha }}</td>
+                        <td class="text-center">{{ p.suc_chua }} chỗ</td>
+                        <td>
+                            {% if p.loai_phong == 'thuc_hanh' %}
+                            <span class="badge badge-accent">Thực hành</span>
+                            {% elif p.loai_phong == 'hoi_truong' %}
+                            <span class="badge badge-warning">Hội trường</span>
+                            {% else %}
+                            <span class="badge badge-primary">Lý thuyết</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <div style="display: flex; gap: 8px; justify-content: center;">
+                                <a href="{% url 'so_do_phong' %}?toa={{ p.toa_nha }}" class="btn-action" title="Xem sơ đồ">
+                                    <i class='bx bx-map-alt'></i>
+                                </a>
+                                <button class="btn-action" title="Xem lịch phòng" onclick="viewRoomSchedule('{{ p.id }}')">
+                                    <i class='bx bx-calendar'></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="empty-state" style="padding: 60px 0;">
+                            <img src="https://cdn-icons-png.flaticon.com/512/7486/7486744.png" style="width: 80px; opacity: 0.2; margin-bottom: 16px;">
+                            <p>Không có phòng nào trống trong khoảng thời gian này.</p>
+                            <small>Vui lòng thử thay đổi thời gian hoặc bộ lọc.</small>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% if page_obj %}
+            {% include 'components/Pagination.html' %}
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    function setToday() {
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('inputNgay').value = today;
+        document.getElementById('searchForm').submit();
+    }
+
+    function setTomorrow() {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const tomorrowStr = tomorrow.toISOString().split('T')[0];
+        document.getElementById('inputNgay').value = tomorrowStr;
+        document.getElementById('searchForm').submit();
+    }
+
+    function viewRoomSchedule(maPhong) {
+        // Redirect to a schedule view filtered by room (if available)
+        // For now, alert or redirect to common list
+        window.location.href = `{% url 'danh_sach_lich' %}?phong=${maPhong}`;
+    }
+</script>
+{% endblock %}

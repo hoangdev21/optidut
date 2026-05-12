@@ -1,0 +1,55 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đăng nhập - OptiDUT</title>
+    <link rel="stylesheet" href="{% static 'css/base.css' %}">
+    <link rel="stylesheet" href="{% static 'css/forms.css' %}">
+    <link rel="stylesheet" href="{% static 'css/responsive.css' %}">
+</head>
+<body>
+    <div class="login-page">
+        <div class="login-box">
+            <div class="login-header">
+                <img src="{% static 'img/logo-dut.png' %}" alt="DUT" class="login-logo" onerror="this.style.display='none'">
+                <h1>OptiDUT</h1>
+                <p>Hệ thống quản lý phòng học</p>
+            </div>
+
+            {% if messages %}
+            <ul class="messages">
+                {% for message in messages %}
+                <li class="message {{ message.tags }}">{{ message }}</li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+
+            {% if form.errors %}
+            <div class="form-errors">
+                <p>Tên đăng nhập hoặc mật khẩu không đúng.</p>
+            </div>
+            {% endif %}
+
+            <form method="post">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label class="form-label" for="id_username">Tên đăng nhập</label>
+                    {{ form.username }}
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="id_password">Mật khẩu</label>
+                    {{ form.password }}
+                </div>
+                <button type="submit" class="btn btn-accent login-btn">Đăng nhập</button>
+            </form>
+            <div style="margin-top: 20px; font-size: 0.9em; color: var(--text-muted); text-align: center;">
+                <p><strong>Tài khoản mẫu (Mật khẩu giống Tên đăng nhập):</strong></p>
+                <p>Quản trị: <code>admin</code> | Giáo vụ: <code>giaovu</code></p>
+                <p>Giảng viên: <code>giangvien</code> | Sinh viên: <code>sinhvien</code></p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
