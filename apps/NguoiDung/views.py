@@ -1,12 +1,19 @@
 from django.shortcuts import render, redirect, get_object_or_404
+from django.http import HttpResponse, JsonResponse
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required
+from django.db import transaction
 from django.contrib import messages
 from django.core.paginator import Paginator
+from django.core.cache import cache
 from django.utils import timezone
+from django.db.models import Q, Count
 from datetime import timedelta
-from .models import NguoiDung
-from .forms import FormDangNhap, FormNguoiDung
+import io
+import csv
+
+from .models import NguoiDung, LopSinhHoat
+from .forms import FormDangNhap, FormNguoiDung, FormLopSinhHoat
 
 
 # ──────────────────────────────────────
@@ -68,10 +75,16 @@ def dashboard_quan_tri(request):
     hom_nay = timezone.now().date()
     # Thống kê mật độ lịch học (7 ngày tới)
     chart_data = []
+    chart_labels = []
+    thu_map = {0: 'Thứ 2', 1: 'Thứ 3', 2: 'Thứ 4', 3: 'Thứ 5', 4: 'Thứ 6', 5: 'Thứ 7', 6: 'CN'}
     for i in range(7):
         ngay = hom_nay + timedelta(days=i)
         count = LichHoc.objects.filter(ngay_hoc=ngay, trang_thai='hoat_dong').count()
         chart_data.append(count)
+        if i == 0:
+            chart_labels.append("Hôm nay")
+        else:
+            chart_labels.append(thu_map[ngay.weekday()])
 
     context = {
         'tong_tai_khoan': NguoiDung.objects.count(),
@@ -81,6 +94,7 @@ def dashboard_quan_tri(request):
         'recent_users': NguoiDung.objects.order_by('-date_joined')[:5],
         'recent_notifications': ThongBao.objects.order_by('-ngay_tao')[:5],
         'chart_data': chart_data,
+        'chart_labels': chart_labels,
         'today': hom_nay,
     }
     return render(request, 'Dashboard/QuanTriVien.html', context)
@@ -98,19 +112,31 @@ def dashboard_giao_vu(request):
     
     # Thống kê lịch dạy trong 7 ngày tới
     chart_data = []
+    chart_labels = []
+    thu_map = {0: 'Thứ 2', 1: 'Thứ 3', 2: 'Thứ 4', 3: 'Thứ 5', 4: 'Thứ 6', 5: 'Thứ 7', 6: 'CN'}
     for i in range(7):
         ngay = hom_nay + timedelta(days=i)
         count = LichHoc.objects.filter(ngay_hoc=ngay, trang_thai='hoat_dong').count()
         chart_data.append(count)
+        if i == 0:
+            chart_labels.append("Hôm nay")
+        else:
+            chart_labels.append(thu_map[ngay.weekday()])
+
+    phong_dang_dung = PhongHoc.objects.filter(trang_thai='dang_su_dung').count()
+    tong_phong = PhongHoc.objects.count()
+    phong_pct = (phong_dang_dung * 100 // tong_phong) if tong_phong > 0 else 0
 
     context = {
         'lich_hom_nay': LichHoc.objects.filter(ngay_hoc=hom_nay, trang_thai='hoat_dong').count(),
         'phong_trong': PhongHoc.objects.filter(trang_thai='trong').count(),
-        'phong_dang_dung': PhongHoc.objects.filter(trang_thai='dang_su_dung').count(),
-        'tong_phong': PhongHoc.objects.count(),
+        'phong_dang_dung': phong_dang_dung,
+        'tong_phong': tong_phong,
+        'phong_pct': phong_pct,
         'yeu_cau_cho': YeuCauDoiLich.objects.filter(trang_thai='cho_duyet').count(),
         'recent_requests': YeuCauDoiLich.objects.order_by('-ngay_tao')[:5],
         'chart_data': chart_data,
+        'chart_labels': chart_labels,
         'today': hom_nay,
     }
     return render(request, 'Dashboard/GiaoVu.html', context)
@@ -295,30 +321,56 @@ def kiem_tra_quan_tri(view_func):
 
 @kiem_tra_quan_tri
 def danh_sach_nguoi_dung(request):
-    """Danh sách tài khoản người dùng."""
-    queryset = NguoiDung.objects.all()
-
+    """Danh sách người dùng với phân trang linh hoạt."""
+    queryset = NguoiDung.objects.all().select_related('lop_sinh_hoat').order_by('-date_joined')
+    
     # Tìm kiếm
     tu_khoa = request.GET.get('q', '')
     if tu_khoa:
-        queryset = queryset.filter(ho_ten__icontains=tu_khoa)
-
-    # Lọc theo vai trò
+        queryset = queryset.filter(
+            Q(ho_ten__icontains=tu_khoa) | 
+            Q(ma_so__icontains=tu_khoa) | 
+            Q(username__icontains=tu_khoa)
+        )
+        
+    # Lọc vai trò
     vai_tro_loc = request.GET.get('vai_tro', '')
     if vai_tro_loc:
         queryset = queryset.filter(vai_tro=vai_tro_loc)
+        
+    # Số lượng phân trang
+    per_page = request.GET.get('per_page', '20')
+    try:
+        per_page = int(per_page)
+    except:
+        per_page = 20
 
-    paginator = Paginator(queryset, 15)
-    trang = request.GET.get('page')
-    nguoi_dungs = paginator.get_page(trang)
-
+    paginator = Paginator(queryset, per_page)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
     context = {
-        'nguoi_dungs': nguoi_dungs,
+        'nguoi_dungs': page_obj,
         'tu_khoa': tu_khoa,
         'vai_tro_loc': vai_tro_loc,
-        'vai_tro_choices': NguoiDung.VaiTro.choices,
+        'per_page': per_page,
+        'vai_tro_choices': NguoiDung.VaiTro.choices
     }
     return render(request, 'NguoiDung/DanhSach.html', context)
+
+
+@kiem_tra_quan_tri
+def xoa_hang_loat_nguoi_dung(request):
+    """Xóa nhiều người dùng cùng lúc."""
+    if request.method == 'POST':
+        user_ids = request.POST.getlist('user_ids')
+        if user_ids:
+            # Không cho phép tự xóa chính mình
+            count, _ = NguoiDung.objects.filter(id__in=user_ids).exclude(id=request.user.id).delete()
+            messages.success(request, f'Đã xóa thành công {count} tài khoản.')
+        else:
+            messages.warning(request, 'Vui lòng chọn ít nhất một tài khoản để xóa.')
+    return redirect('danh_sach_nguoi_dung')
 
 
 @kiem_tra_quan_tri
@@ -364,3 +416,240 @@ def xoa_nguoi_dung(request, pk):
         messages.success(request, f'Đã xóa tài khoản "{ten}".')
         return redirect('danh_sach_nguoi_dung')
     return render(request, 'NguoiDung/XacNhanXoa.html', {'nguoi_dung': nguoi_dung})
+
+
+@kiem_tra_quan_tri
+def reset_mat_khau(request, pk):
+    """Đặt lại mật khẩu nhanh cho người dùng."""
+    nguoi_dung = get_object_or_404(NguoiDung, pk=pk)
+    if request.method == 'POST':
+        moi = request.POST.get('password')
+        if moi:
+            nguoi_dung.set_password(moi)
+            nguoi_dung.save()
+            messages.success(request, f'Đã đặt lại mật khẩu cho "{nguoi_dung.ho_ten}".')
+        else:
+            messages.error(request, 'Vui lòng nhập mật khẩu mới.')
+    return redirect('danh_sach_nguoi_dung')
+
+
+from django.core.cache import cache
+import json
+from django.http import JsonResponse
+
+@kiem_tra_quan_tri
+def lay_tien_do_nhap_csv(request):
+    """Trả về tiến độ nhập CSV thực tế từ cache."""
+    task_id = request.GET.get('task_id')
+    progress = cache.get(f'import_progress_{task_id}', 0)
+    status = cache.get(f'import_status_{task_id}', 'Đang xử lý...')
+    return JsonResponse({'progress': progress, 'status': status})
+
+@kiem_tra_quan_tri
+@transaction.atomic
+def nhap_nguoi_dung_csv(request):
+    """Nhập danh sách người dùng từ file CSV với quy tắc kiểm soát nghiêm ngặt."""
+    if request.method == 'POST' and request.FILES.get('csv_file'):
+        csv_file = request.FILES['csv_file']
+        
+        try:
+            # 1. Xử lý mã hóa đa nền tảng để hỗ trợ tiếng Việt tuyệt đối
+            file_data = csv_file.read()
+            encodings = ['utf-8-sig', 'utf-16', 'windows-1258', 'utf-8']
+            decoded_file = None
+            
+            for enc in encodings:
+                try:
+                    decoded_file = file_data.decode(enc)
+                    break
+                except (UnicodeDecodeError, UnicodeError):
+                    continue
+            
+            if not decoded_file:
+                messages.error(request, 'Không thể nhận diện bảng mã của file. Vui lòng lưu file ở định dạng CSV UTF-8.')
+                return redirect('danh_sach_nguoi_dung')
+                
+            io_string = io.StringIO(decoded_file)
+            
+            # Tự động nhận diện dấu ngăn cách (Phẩy , hoặc Chấm phẩy ;)
+            try:
+                dialect = csv.Sniffer().sniff(decoded_file[:2000], delimiters=',;')
+                reader = list(csv.DictReader(io_string, dialect=dialect))
+            except Exception:
+                io_string.seek(0)
+                reader = list(csv.DictReader(io_string))
+            
+            if not reader:
+                messages.error(request, 'File CSV không có dữ liệu.')
+                return redirect('danh_sach_nguoi_dung')
+
+            errors = []
+            seen_usernames = set()
+            
+            # PHASE 1: Kiểm tra tính hợp lệ sơ bộ
+            ghi_de = request.POST.get('ghi_de') == 'on'
+            
+            for index, row in enumerate(reader, start=2):
+                username = row.get('username', '').strip()
+                ho_ten = row.get('ho_ten', '').strip()
+                vai_tro = row.get('vai_tro', '').strip()
+                
+                if not username or not ho_ten or not vai_tro:
+                    errors.append(f"Dòng {index}: Thiếu thông tin bắt buộc (username, ho_ten, vai_tro).")
+                    continue
+                
+                if username in seen_usernames:
+                    errors.append(f"Dòng {index}: Username '{username}' trùng lặp trong file.")
+                seen_usernames.add(username)
+                
+                if not ghi_de and NguoiDung.objects.filter(username=username).exists():
+                    errors.append(f"Dòng {index}: Username '{username}' đã tồn tại trong hệ thống.")
+
+            if errors:
+                messages.error(request, f'Lỗi dữ liệu CSV:<br>{"<br>".join(errors[:10])}')
+                return redirect('danh_sach_nguoi_dung')
+
+            # PHASE 2: Thực hiện Import với Transaction
+            task_id = request.POST.get('task_id', 'manual')
+            total_rows = len(reader)
+            count_new = 0
+            count_upd = 0
+            
+            with transaction.atomic():
+                for index, row in enumerate(reader, start=1):
+                    # Cập nhật tiến độ vào cache để polling
+                    percent = int((index / total_rows) * 100)
+                    cache.set(f'import_progress_{task_id}', percent, 300)
+                    cache.set(f'import_status_{task_id}', f"Đang xử lý {index}/{total_rows}...", 300)
+                    
+                    username = row.get('username', '').strip()
+                    password = row.get('password', '').strip()
+                    ho_ten = row.get('ho_ten', '').strip()
+                    ma_so = row.get('ma_so', '').strip()
+                    vai_tro = row.get('vai_tro', 'sinh_vien').strip()
+                    ten_lop = row.get('lop_sinh_hoat', '').strip().upper()
+                    
+                    lop_sh = None
+                    if ten_lop and vai_tro == 'sinh_vien':
+                        lop_sh, _ = LopSinhHoat.objects.get_or_create(ten_lop=ten_lop)
+                        
+                    user, created = NguoiDung.objects.get_or_create(username=username)
+                    user.ho_ten = ho_ten
+                    user.ma_so = ma_so
+                    user.vai_tro = vai_tro
+                    user.email = row.get('email', '').strip()
+                    user.lop_sinh_hoat = lop_sh
+                    
+                    if password:
+                        user.set_password(password)
+                    elif created:
+                        user.set_password('123456aA@') # Mật khẩu mặc định
+                    
+                    user.save()
+                    if created: count_new += 1
+                    else: count_upd += 1
+                
+                # Hoàn tất
+                cache.delete(f'import_progress_{task_id}')
+                cache.delete(f'import_status_{task_id}')
+                messages.success(request, f'Nhập dữ liệu thành công: Thêm mới {count_new}, Cập nhật {count_upd} tài khoản.')
+                
+        except Exception as e:
+            messages.error(request, f'Lỗi hệ thống khi xử lý CSV: {str(e)}')
+            
+    return redirect('danh_sach_nguoi_dung')
+
+
+@kiem_tra_quan_tri
+def xuat_nguoi_dung_csv(request):
+    """Xuất danh sách người dùng hiện tại ra file CSV."""
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
+    response['Content-Disposition'] = 'attachment; filename="danh_sach_nguoi_dung.csv"'
+    response.write('\ufeff')
+    
+    writer = csv.writer(response)
+    writer.writerow(['Tên đăng nhập', 'Họ và tên', 'Mã số', 'Email', 'Lớp sinh hoạt', 'Vai trò', 'Ngày tham gia'])
+    
+    # Lấy lại queryset giống trang danh sách (có thể tối ưu bằng cách lưu session filter)
+    queryset = NguoiDung.objects.all().select_related('lop_sinh_hoat')
+    tu_khoa = request.GET.get('q', '')
+    if tu_khoa:
+        queryset = queryset.filter(Q(ho_ten__icontains=tu_khoa) | Q(ma_so__icontains=tu_khoa))
+    vai_tro_loc = request.GET.get('vai_tro', '')
+    if vai_tro_loc:
+        queryset = queryset.filter(vai_tro=vai_tro_loc)
+        
+    for u in queryset:
+        writer.writerow([
+            u.username, u.ho_ten, u.ma_so, u.email,
+            u.lop_sinh_hoat.ten_lop if u.lop_sinh_hoat else '-',
+            u.get_vai_tro_display(), u.date_joined.strftime('%d/%m/%Y')
+        ])
+        
+    return response
+
+
+@kiem_tra_quan_tri
+def danh_sach_lop_sinh_hoat(request):
+    """Quản lý danh sách lớp sinh hoạt."""
+    queryset = LopSinhHoat.objects.annotate(so_sv=Count('sinh_viens')).order_by('ten_lop')
+    
+    tu_khoa = request.GET.get('q', '')
+    if tu_khoa:
+        queryset = queryset.filter(Q(ten_lop__icontains=tu_khoa) | Q(khoa_quan_ly__icontains=tu_khoa))
+    
+    khoa_loc = request.GET.get('khoa', '')
+    if khoa_loc:
+        queryset = queryset.filter(khoa_quan_ly=khoa_loc)
+        
+    khoa_hoc_loc = request.GET.get('khoa_hoc', '')
+    if khoa_hoc_loc:
+        queryset = queryset.filter(khoa_hoc=khoa_hoc_loc)
+        
+    # Thống kê nhanh
+    thong_ke = {
+        'tong_lop': queryset.count(),
+        'tong_sv': sum(l.so_sv for l in queryset)
+    }
+    
+    # Danh sách khoa và khóa học duy nhất để làm filter
+    ds_khoa = LopSinhHoat.objects.values_list('khoa_quan_ly', flat=True).distinct().order_by('khoa_quan_ly')
+    ds_khoa_hoc = LopSinhHoat.objects.values_list('khoa_hoc', flat=True).distinct().order_by('-khoa_hoc')
+
+    context = {
+        'lops': queryset,
+        'tu_khoa': tu_khoa,
+        'khoa_loc': khoa_loc,
+        'khoa_hoc_loc': khoa_hoc_loc,
+        'ds_khoa': ds_khoa,
+        'ds_khoa_hoc': ds_khoa_hoc,
+        'thong_ke': thong_ke
+    }
+    return render(request, 'NguoiDung/LopSinhHoat/DanhSach.html', context)
+
+
+@kiem_tra_quan_tri
+def sua_lop_sinh_hoat(request, pk):
+    """Chỉnh sửa thông tin lớp sinh hoạt."""
+    lop = get_object_or_404(LopSinhHoat, pk=pk)
+    if request.method == 'POST':
+        form = FormLopSinhHoat(request.POST, instance=lop)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'Đã cập nhật thông tin lớp {lop.ten_lop}.')
+            return redirect('danh_sach_lop_sinh_hoat')
+    else:
+        form = FormLopSinhHoat(instance=lop)
+    return render(request, 'NguoiDung/LopSinhHoat/ChinhSua.html', {'form': form, 'lop': lop})
+
+
+@kiem_tra_quan_tri
+def xoa_lop_sinh_hoat(request, pk):
+    """Xóa lớp sinh hoạt."""
+    lop = get_object_or_404(LopSinhHoat, pk=pk)
+    if request.method == 'POST':
+        ten = lop.ten_lop
+        lop.delete()
+        messages.success(request, f'Đã xóa lớp {ten}.')
+        return redirect('danh_sach_lop_sinh_hoat')
+    return redirect('danh_sach_lop_sinh_hoat')

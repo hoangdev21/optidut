@@ -1,39 +1,118 @@
 {% extends 'base.html' %}
-{% block title %}Chỉnh sửa Lớp học - OptiDUT{% endblock %}
+{% block title %}Chỉnh sửa Lớp học phần - OptiDUT{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-content { max-width: 900px !important; margin: 0 auto !important; padding: 30px !important; }
+    
+    .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+    .page-title { font-size: 20px; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 10px; margin: 0; }
+
+    .form-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+
+    .hint-box { background: #f8fafc; border-left: 4px solid #003366; padding: 12px 16px; margin-bottom: 24px; color: #475569; font-size: 13px; line-height: 1.5; }
+    .hint-box strong { color: #003366; }
+
+    .section-label { font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px; margin-bottom: 16px; margin-top: 24px; }
+    .section-label:first-of-type { margin-top: 0; }
+
+    .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group.full { grid-column: span 2; }
+    
+    .form-label { font-size: 13px; font-weight: 600; color: #334155; }
+    .form-input { height: 38px; border-radius: 6px; border: 1px solid #e2e8f0; padding: 0 12px; font-size: 13px; transition: all 0.2s; }
+    .form-input:focus { border-color: #003366; outline: none; box-shadow: 0 0 0 3px rgba(0, 51, 102, 0.1); }
+    
+    /* Style for Django Select widget */
+    .form-select { height: 38px; border-radius: 6px; border: 1px solid #e2e8f0; padding: 0 12px; font-size: 13px; background-color: white; }
+
+    .error-list { color: #dc2626; font-size: 12px; margin-top: 4px; list-style: none; padding: 0; }
+    
+    .form-actions { display: flex; gap: 10px; margin-top: 32px; border-top: 1px solid #f1f5f9; padding-top: 20px; justify-content: flex-end; }
+    .btn { height: 38px; border-radius: 6px; padding: 0 20px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; border: 1px solid transparent; }
+    .btn-primary { background: #003366; color: white; }
+    .btn-primary:hover { background: #00264d; }
+    .btn-outline { background: white; border-color: #e2e8f0; color: #64748b; }
+    .btn-outline:hover { background: #f8fafc; color: #1e293b; border-color: #cbd5e1; }
+
+    @media (max-width: 640px) {
+        .form-grid { grid-template-columns: 1fr; }
+        .form-group.full { grid-column: span 1; }
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <div class="header-content">
-        <h1>Chỉnh sửa Lớp học</h1>
-        <p>Cập nhật thông tin của lớp {{ lop.ten_lop }}.</p>
+<div class="classes-admin">
+    <div class="page-header">
+        <h1 class="page-title"><i class='bx bx-edit-alt'></i> Chỉnh sửa lớp học phần</h1>
+        <a href="{% url 'danh_sach_lop' %}" class="btn btn-outline">
+            <i class='bx bx-arrow-back'></i> Quay lại
+        </a>
     </div>
-</div>
 
-<div class="card">
-    <form method="POST" class="form">
-        {% csrf_token %}
-        <div class="form-grid">
-            <div class="form-group full-width">
-                <label class="form-label">Tên lớp học</label>
-                {{ form.ten_lop }}
-                {{ form.ten_lop.errors }}
-            </div>
-            <div class="form-group">
-                <label class="form-label">Khoa</label>
-                {{ form.khoa }}
-                {{ form.khoa.errors }}
-            </div>
-            <div class="form-group">
-                <label class="form-label">Niên khóa</label>
-                {{ form.nien_khoa }}
-                {{ form.nien_khoa.errors }}
-            </div>
+    <div class="form-card">
+        <div class="hint-box">
+            Đang chỉnh sửa lớp: <strong>{{ lop.ten_lop }}</strong>. Thay đổi mã học phần sẽ tự động cập nhật thông tin môn học tương ứng.
         </div>
-        
-        <div class="form-actions">
-            <a href="{% url 'danh_sach_lop' %}" class="btn btn-outline">Hủy</a>
-            <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
+
+        {% if form.non_field_errors %}
+        <div class="form-errors" style="background: #fef2f2; border: 1px solid #fee2e2; padding: 12px; border-radius: 6px; margin-bottom: 20px; color: #b91c1c; font-size: 13px;">
+            {% for error in form.non_field_errors %}
+            <p>{{ error }}</p>
+            {% endfor %}
         </div>
-    </form>
+        {% endif %}
+
+        <form method="POST">
+            {% csrf_token %}
+
+            <p class="section-label">Thông tin học phần</p>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">Mã học phần</label>
+                    <input type="text" name="ma_mon" id="id_ma_mon" class="form-input" placeholder="VD: IT001" value="{{ form.ma_mon.value|default:'' }}">
+                    <div class="error-list">{{ form.ma_mon.errors }}</div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Tên môn học</label>
+                    <input type="text" name="ten_mon" id="id_ten_mon" class="form-input" placeholder="VD: Lập trình C++" value="{{ form.ten_mon.value|default:'' }}">
+                    <div class="error-list">{{ form.ten_mon.errors }}</div>
+                </div>
+            </div>
+
+            <p class="section-label">Thông tin lớp học phần</p>
+            <div class="form-grid">
+                <div class="form-group full">
+                    <label class="form-label">Tên lớp học phần</label>
+                    <input type="text" name="ten_lop" id="id_ten_lop" class="form-input" placeholder="VD: 21TCLC_DT1" value="{{ form.ten_lop.value|default:'' }}">
+                    <div class="error-list">{{ form.ten_lop.errors }}</div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Khoa quản lý</label>
+                    <input type="text" name="khoa" id="id_khoa" class="form-input" placeholder="VD: CNTT" value="{{ form.khoa.value|default:'' }}">
+                    <div class="error-list">{{ form.khoa.errors }}</div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Giảng viên phụ trách</label>
+                    {{ form.giang_vien }}
+                    <div class="error-list">{{ form.giang_vien.errors }}</div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Niên khóa</label>
+                    <input type="text" name="nien_khoa" id="id_nien_khoa" class="form-input" placeholder="VD: 2024-2025" value="{{ form.nien_khoa.value|default:'' }}">
+                    <div class="error-list">{{ form.nien_khoa.errors }}</div>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <a href="{% url 'danh_sach_lop' %}" class="btn btn-outline">Hủy</a>
+                <button type="submit" class="btn btn-primary">
+                    <i class='bx bx-save'></i> Lưu thay đổi
+                </button>
+            </div>
+        </form>
+    </div>
 </div>
 {% endblock %}

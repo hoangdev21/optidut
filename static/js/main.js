@@ -54,17 +54,37 @@ function initApp() {
         }, 4000);
     });
 
-    // ── Active Nav Link Logic ──
+    // ── Active Nav Link Logic (Longest Match) ──
     const currentPath = window.location.pathname;
     const navLinks = document.querySelectorAll('.nav-link');
+    let bestMatch = null;
+    let maxLen = -1;
+
+    // Clear any existing active classes first
+    navLinks.forEach(link => link.classList.remove('active'));
+
     navLinks.forEach(link => {
         const href = link.getAttribute('href');
-        if (href && currentPath.startsWith(href) && href !== '/') {
-            link.classList.add('active');
-        } else if (href === '/' && currentPath === '/') {
-            link.classList.add('active');
+        if (!href) return;
+
+        // Exact match for root, or starts with for subpaths
+        if (href === '/' && currentPath === '/') {
+            bestMatch = link;
+            maxLen = 1;
+        } else if (href !== '/' && currentPath.startsWith(href)) {
+            // Ensure it's a clean segment match (e.g. /equip matches /equipment/ but not /equip-ment)
+            if (currentPath === href || currentPath.charAt(href.length) === '/') {
+                if (href.length > maxLen) {
+                    maxLen = href.length;
+                    bestMatch = link;
+                }
+            }
         }
     });
+
+    if (bestMatch) {
+        bestMatch.classList.add('active');
+    }
 }
 
 document.addEventListener('DOMContentLoaded', initApp);

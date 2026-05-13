@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block title %}Sửa Lớp sinh hoạt - OptiDUT{% endblock %}
+
+{% block content %}
+<div class="page-header" style="max-width: 600px; margin: 0 auto 24px auto;">
+    <h1 class="page-title">Sửa thông tin lớp: {{ lop.ten_lop }}</h1>
+</div>
+
+<div class="form-container" style="max-width: 600px; margin: 0 auto;">
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-group" style="margin-bottom: 20px;">
+            <label class="form-label">Tên lớp sinh hoạt</label>
+            {{ form.ten_lop }}
+            <small style="color: #ef4444; display: block; margin-top: 5px;">Lưu ý: Đổi tên lớp sẽ cập nhật dữ liệu cho tất cả sinh viên thuộc lớp này.</small>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label class="form-label">Khóa học</label>
+                {{ form.khoa_hoc }}
+            </div>
+            <div class="form-group">
+                <label class="form-label">Khoa quản lý</label>
+                {{ form.khoa_quan_ly }}
+            </div>
+        </div>
+        <div class="form-actions" style="margin-top: 30px;">
+            <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
+            <a href="{% url 'danh_sach_lop_sinh_hoat' %}" class="btn btn-outline">Hủy</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

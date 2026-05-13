@@ -56,10 +56,12 @@
         {% endif %}
 
         <div class="nav-section">Tra cứu</div>
+        {% if user.la_sinh_vien or user.la_giang_vien and not user.la_giao_vu %}
         <a href="{% url 'danh_sach_lich' %}" class="nav-link">
             <i class='bx bx-list-ul nav-icon'></i>
             <span class="nav-text">{% if user.la_giang_vien %}Xem lịch dạy{% else %}Xem lịch học{% endif %}</span>
         </a>
+        {% endif %}
         <a href="{% url 'thoi_khoa_bieu_tuan' %}" class="nav-link">
             <i class='bx bx-calendar nav-icon'></i>
             <span class="nav-text">Thời khóa biểu tuần</span>

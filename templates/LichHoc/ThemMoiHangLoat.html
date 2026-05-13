@@ -160,8 +160,50 @@
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
-    document.addEventListener("DOMContentLoaded", function() {
+    $(document).ready(function() {
         $('.form-select').select2({ width: '100%', language: { noResults: function() { return "Không tìm thấy"; } } });
+
+        const selectMon = $('#id_mon_hoc');
+        const selectLop = $('#id_lop_hoc');
+        const selectGV = $('#id_giang_vien');
+
+        // Khi chọn Môn học -> Lọc Lớp học phần
+        selectMon.on('change', function() {
+            const monId = $(this).val();
+            if (!monId) return;
+
+            fetch(`/schedules/api/loc-lop-theo-mon/?mon_id=${monId}`)
+                .then(res => res.json())
+                .then(data => {
+                    const currentLopId = selectLop.val();
+                    selectLop.empty().append('<option value="">---------</option>');
+                    data.lops.forEach(l => {
+                        selectLop.append(new Option(l.ten_lop, l.id));
+                    });
+                    if (data.lops.find(l => l.id == currentLopId)) {
+                        selectLop.val(currentLopId).trigger('change.select2');
+                    } else {
+                        selectLop.trigger('change');
+                    }
+                });
+        });
+
+        // Khi chọn Lớp học phần -> Tự động chọn Môn học và Giảng viên
+        selectLop.on('change', function() {
+            const lopId = $(this).val();
+            if (!lopId) return;
+
+            fetch(`/schedules/api/loc-lop-theo-mon/?lop_id=${lopId}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.mon_id) {
+                        selectMon.val(data.mon_id).trigger('change.select2');
+                    }
+                    if (data.giang_vien_id) {
+                        selectGV.val(data.giang_vien_id).trigger('change.select2');
+                    }
+                });
+        });
     });
 </script>
 {% endblock %}

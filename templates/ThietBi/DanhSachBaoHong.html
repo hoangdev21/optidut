@@ -2,76 +2,107 @@
 {% block title %}Danh sách báo hỏng - OptiDUT{% endblock %}
 {% block extra_css %}
 <style>
-    .report-wrapper { max-width: 1400px; margin: 0 auto; }
+    .report-wrapper { max-width: 100%; margin: 0 auto; }
     
-    /* Stats Card Styling - Image based, no bg */
-    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 24px; }
+    /* Stats Card Styling - Compact Horizontal */
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 24px; }
     .stat-card { 
         background: var(--color-white); 
-        border-radius: 12px; 
-        padding: 24px; 
+        border-radius: 4px; 
+        padding: 16px 20px; 
         display: flex; 
         align-items: center; 
-        gap: 20px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        gap: 15px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         border: 1px solid var(--color-border);
+        transition: all 0.2s;
+        text-decoration: none;
+        color: inherit;
     }
+    .stat-card:hover { border-color: var(--color-primary); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
     .stat-card img { 
-        width: 56px; 
-        height: 56px; 
+        width: 40px; 
+        height: 40px; 
         object-fit: contain;
+        flex-shrink: 0;
     }
-    .stat-info { display: flex; flex-direction: column; }
-    .stat-value { font-size: 28px; font-weight: 700; color: var(--color-text-primary); line-height: 1.2; }
-    .stat-label { font-size: 14px; color: var(--color-text-secondary); font-weight: 500; }
+    .stat-info { display: flex; flex-direction: column; line-height: 1.2; }
+    .stat-value { font-size: 22px; font-weight: 800; color: var(--color-primary); }
+    .stat-label { font-size: 13px; color: var(--color-text-secondary); font-weight: 600; }
 
-    /* Action Buttons & Popover Confirmation */
-    .action-btns { display: flex; gap: 8px; justify-content: center; }
-    .btn-icon { 
+    /* Filter Bar */
+    .filter-section { 
+        background: #fff; 
+        border: 1px solid var(--color-border); 
+        padding: 20px; 
+        margin-bottom: 24px; 
+        border-radius: 4px;
+    }
+    .filter-grid { 
+        display: grid; 
+        grid-template-columns: 2fr 1fr 1fr 1fr 1.2fr 1fr auto; 
+        gap: 12px; 
+        align-items: flex-end; 
+    }
+    .filter-group { display: flex; flex-direction: column; gap: 6px; }
+    .filter-group label { font-size: 11px; font-weight: 700; color: var(--color-primary); text-transform: uppercase; }
+    .filter-input, .filter-select { 
+        height: 38px; 
+        padding: 0 10px; 
+        border: 1px solid var(--color-border); 
+        border-radius: 4px; 
+        font-size: 13px; 
+        width: 100%;
+    }
+    .btn-filter { height: 38px; padding: 0 20px; display: flex; align-items: center; gap: 8px; font-weight: 600; }
+
+    /* Data Table */
+    .table-shell { 
+        background: var(--color-white); 
+        border: 1px solid var(--color-border);
+        border-radius: 4px; 
+        overflow: hidden; 
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .report-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .report-table th { 
+        background: #003366; 
+        color: #fff; 
+        font-weight: 600; 
+        text-align: left; 
+        padding: 14px 16px; 
+        font-size: 12px; 
+        text-transform: uppercase;
+        border-right: 1px solid rgba(255,255,255,0.1);
+    }
+    .report-table td { 
+        padding: 14px 16px; 
+        border-bottom: 1px solid #F1F5F9; 
+        color: var(--color-text);
+        border-right: 1px solid #F1F5F9;
+    }
+    .report-table td:last-child { border-right: none; }
+    .report-table tbody tr:nth-child(even) { background: #F8FAFC; }
+    .report-table tbody tr:hover { background: #F1F5F9; }
+
+    /* action-btns style */
+    .action-btns { display: flex; gap: 6px; justify-content: center; }
+    .btn-icon-v2 { 
         width: 32px; 
         height: 32px; 
         display: flex; 
         align-items: center; 
         justify-content: center; 
-        border-radius: 6px; 
-        border: none; 
+        border-radius: 4px; 
+        border: 1px solid var(--color-border);
+        background: #fff;
         cursor: pointer; 
         transition: all 0.2s;
-        font-size: 18px;
+        font-size: 16px;
     }
-    .btn-view { background: #f3f4f6; color: #374151; }
-    .btn-approve { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
-    .btn-success-soft { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
-
-    /* Custom Popover Confirmation */
-    .popover-confirm {
-        display: none;
-        position: fixed;
-        background: white;
-        border: 1px solid #e5e7eb;
-        border-radius: 8px;
-        padding: 12px;
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-        z-index: 1001;
-        width: 220px;
-    }
-    .popover-confirm.active { display: block; }
-    .popover-title { font-size: 14px; font-weight: 600; margin-bottom: 8px; color: #111827; }
-    .popover-footer { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; }
-
-    /* Badge & Info Styling */
-    .badge-outline {
-        padding: 2px 10px;
-        border-radius: 9999px;
-        font-size: 12px;
-        font-weight: 600;
-        border: 1px solid transparent;
-    }
-    .badge-pending { border-color: #f59e0b; color: #d97706; background: #fffbeb; }
-    .badge-repair { border-color: #3b82f6; color: #1d4ed8; background: #eff6ff; }
-    .badge-done { border-color: #10b981; color: #059669; background: #ecfdf5; }
-
-    .text-truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .btn-icon-v2:hover { background: var(--color-primary); color: #fff; border-color: var(--color-primary); }
+    .btn-icon-v2.btn-success:hover { background: var(--color-success); border-color: var(--color-success); }
+    .btn-icon-v2.btn-warning:hover { background: var(--color-accent); border-color: var(--color-accent); color: #fff; }
 
     /* Modal Styling */
     .modal {
@@ -86,63 +117,90 @@
         backdrop-filter: blur(4px);
     }
     .modal-content {
-        background-color: #fefefe;
+        background-color: #fff;
         margin: 10% auto;
-        padding: 0;
-        border-radius: 12px;
-        width: 600px;
+        border-radius: 8px;
+        width: 500px;
         max-width: 90%;
         box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
         overflow: hidden;
+        animation: modalFadeIn 0.3s ease;
+    }
+    @keyframes modalFadeIn {
+        from { opacity: 0; transform: translateY(-20px); }
+        to { opacity: 1; transform: translateY(0); }
     }
     .modal-header {
         padding: 16px 20px;
         background: #f9fafb;
-        border-bottom: 1px solid #e5e7eb;
+        border-bottom: 1px solid var(--color-border);
         display: flex;
         justify-content: space-between;
         align-items: center;
     }
-    .modal-header h3 { margin: 0; font-size: 18px; color: var(--color-text-primary); }
-    .close-modal { font-size: 24px; cursor: pointer; color: #9ca3af; }
-    .modal-body { padding: 24px; }
+    .modal-header h3 { margin: 0; font-size: 16px; color: var(--color-primary); font-weight: 700; }
+    .close-modal { font-size: 24px; cursor: pointer; color: #9ca3af; line-height: 1; }
+    .modal-body { padding: 20px; }
 
-    /* Layout overrides for filter bar to match screen */
-    .filter-bar { background: var(--color-white); padding: 20px; border-radius: 8px; border: 1px solid var(--color-border); margin-bottom: 24px; }
+    /* Popover Confirm Styling */
+    .popover-confirm {
+        display: none;
+        position: absolute;
+        background: white;
+        border: 1px solid var(--color-border);
+        border-radius: 6px;
+        padding: 15px;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        z-index: 1001;
+        width: 220px;
+        animation: popoverFadeIn 0.2s ease;
+    }
+    @keyframes popoverFadeIn {
+        from { opacity: 0; transform: scale(0.95); }
+        to { opacity: 1; transform: scale(1); }
+    }
+    .popover-confirm.active { display: block; }
+    .popover-title { font-size: 14px; font-weight: 700; margin-bottom: 12px; color: var(--color-text); }
+    .popover-footer { display: flex; gap: 8px; justify-content: flex-end; }
+
+    @media (max-width: 1400px) {
+        .filter-grid { grid-template-columns: repeat(3, 1fr); }
+        .btn-filter { width: 100%; justify-content: center; }
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="report-wrapper">
-    <div class="page-header">
-        <h1 class="page-title">Danh sách báo hỏng</h1>
+    <div class="page-header" style="margin-bottom: 24px;">
+        <h1 class="page-title"><i class='bx bx-error-circle'></i> Danh sách báo hỏng thiết bị</h1>
     </div>
 
-    <!-- Stats Cards with Images (Placeholders) -->
+    <!-- Stats Grid -->
     <div class="stats-grid">
         <div class="stat-card">
-            <img src="/static/img/stats/total.png" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3503/3503827.png'" alt="Total">
+            <img src="/static/img/stats-total.png" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3503/3503827.png'" alt="Total">
             <div class="stat-info">
                 <span class="stat-value">{{ thong_ke.tong }}</span>
                 <span class="stat-label">Tổng báo hỏng</span>
             </div>
         </div>
         <div class="stat-card">
-            <img src="/static/img/stats/pending.png" onerror="this.src='https://cdn-icons-png.flaticon.com/512/2972/2972531.png'" alt="Pending">
+            <img src="/static/img/stats-teachers.png" onerror="this.src='https://cdn-icons-png.flaticon.com/512/2972/2972531.png'" alt="Pending">
             <div class="stat-info">
                 <span class="stat-value">{{ thong_ke.cho_xu_ly }}</span>
                 <span class="stat-label">Chờ xử lý</span>
             </div>
         </div>
         <div class="stat-card">
-            <img src="/static/img/stats/repair.png" onerror="this.src='https://cdn-icons-png.flaticon.com/512/1087/1087080.png'" alt="Repairing">
+            <img src="/static/img/stats-rooms.png" onerror="this.src='https://cdn-icons-png.flaticon.com/512/1087/1087080.png'" alt="Repairing">
             <div class="stat-info">
                 <span class="stat-value">{{ thong_ke.dang_sua }}</span>
                 <span class="stat-label">Đang sửa</span>
             </div>
         </div>
         <div class="stat-card">
-            <img src="/static/img/stats/done.png" onerror="this.src='https://cdn-icons-png.flaticon.com/512/190/190411.png'" alt="Done">
+            <img src="/static/img/stats-cancel.png" onerror="this.src='https://cdn-icons-png.flaticon.com/512/190/190411.png'" alt="Done">
             <div class="stat-info">
                 <span class="stat-value">{{ thong_ke.da_sua }}</span>
                 <span class="stat-label">Đã sửa</span>
@@ -150,116 +208,81 @@
         </div>
     </div>
 
-    <style>
-        .filter-container {
-            display: flex;
-            align-items: flex-end;
-            gap: 16px;
-            flex-wrap: nowrap;
-            width: 100%;
-        }
-        .filter-item { flex-shrink: 0; }
-        .filter-item-grow { flex-grow: 1; min-width: 200px; }
-        
-        @media (max-width: 1280px) {
-            .filter-container { flex-wrap: wrap; }
-            .filter-item { flex-grow: 1; }
-            .btn-filter-wrapper { width: 100%; text-align: right; }
-        }
-    </style>
-
-    <!-- Professional Responsive Filter Bar -->
-    <form method="get" class="filter-bar" style="padding: 24px; background: #fff; border: 1px solid var(--color-border); border-radius: 12px;">
-        <div class="filter-container">
-            <div class="filter-item filter-item-grow">
-                <label style="font-size: 12px; color: #64748b; margin-bottom: 6px; display: block; font-weight: 600;">Tìm kiếm</label>
-                <input type="text" name="q" value="{{ tu_khoa }}" class="form-input" placeholder="Tên thiết bị..." style="height: 40px; border-radius: 8px;">
+    <!-- Filter Bar -->
+    <div class="filter-section">
+        <form method="get" class="filter-grid">
+            <div class="filter-group">
+                <label>Tìm kiếm</label>
+                <input type="text" name="q" value="{{ tu_khoa }}" class="filter-input" placeholder="Tên thiết bị...">
             </div>
-            <div class="filter-item" style="width: 120px;">
-                <label style="font-size: 12px; color: #64748b; margin-bottom: 6px; display: block; font-weight: 600;">Phòng</label>
-                <select name="phong" class="form-select" style="height: 40px; border-radius: 8px; font-size: 13px;">
+            <div class="filter-group">
+                <label>Phòng</label>
+                <select name="phong" class="filter-select">
                     <option value="">Tất cả</option>
                     {% for p in ds_phong %}
                     <option value="{{ p.id }}" {% if phong_loc == p.id|stringformat:'s' %}selected{% endif %}>{{ p.ma_phong }}</option>
                     {% endfor %}
                 </select>
             </div>
-            <div class="filter-item" style="width: 150px;">
-                <label style="font-size: 12px; color: #64748b; margin-bottom: 6px; display: block; font-weight: 600;">Người báo</label>
-                <select name="nguoi_bao" class="form-select" style="height: 40px; border-radius: 8px; font-size: 13px;">
-                    <option value="">Tất cả</option>
-                    {% for uid, ho_ten in ds_nguoi_bao %}
-                    <option value="{{ uid }}" {% if nguoi_bao_loc == uid|stringformat:'s' %}selected{% endif %}>{{ ho_ten }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="filter-item" style="width: 130px;">
-                <label style="font-size: 12px; color: #64748b; margin-bottom: 6px; display: block; font-weight: 600;">Trạng thái</label>
-                <select name="trang_thai" class="form-select" style="height: 40px; border-radius: 8px; font-size: 13px;">
+            <div class="filter-group">
+                <label>Trạng thái</label>
+                <select name="trang_thai" class="filter-select">
                     <option value="">Tất cả</option>
                     {% for value, label in trang_thai_choices %}
                     <option value="{{ value }}" {% if trang_thai_loc == value %}selected{% endif %}>{{ label }}</option>
                     {% endfor %}
                 </select>
             </div>
-            <div class="filter-item" style="width: 120px;">
-                <label style="font-size: 12px; color: #64748b; margin-bottom: 6px; display: block; font-weight: 600;">Thời gian</label>
-                <select name="thoi_gian" class="form-select" style="height: 40px; border-radius: 8px; font-size: 13px;">
-                    <option value="">Tuỳ chỉnh</option>
-                    <option value="hom_nay" {% if thoi_gian_loc == 'hom_nay' %}selected{% endif %}>Hôm nay</option>
-                    <option value="hom_qua" {% if thoi_gian_loc == 'hom_qua' %}selected{% endif %}>Hôm qua</option>
-                    <option value="tuan_nay" {% if thoi_gian_loc == 'tuan_nay' %}selected{% endif %}>Tuần này</option>
-                </select>
+            <div class="filter-group">
+                <label>Từ ngày</label>
+                <input type="date" name="tu_ngay" value="{{ tu_ngay }}" class="filter-input">
             </div>
-            <div class="filter-item" style="width: 140px;">
-                <label style="font-size: 12px; color: #64748b; margin-bottom: 6px; display: block; font-weight: 600;">Từ ngày</label>
-                <input type="date" name="tu_ngay" value="{{ tu_ngay }}" class="form-input" style="height: 40px; border-radius: 8px; font-size: 13px;">
+            <div class="filter-group">
+                <label>Đến ngày</label>
+                <input type="date" name="den_ngay" value="{{ den_ngay }}" class="filter-input">
             </div>
-            <div class="filter-item" style="width: 140px;">
-                <label style="font-size: 12px; color: #64748b; margin-bottom: 6px; display: block; font-weight: 600;">Đến ngày</label>
-                <input type="date" name="den_ngay" value="{{ den_ngay }}" class="form-input" style="height: 40px; border-radius: 8px; font-size: 13px;">
-            </div>
-            <div class="filter-item btn-filter-wrapper">
-                <button type="submit" class="btn btn-primary" style="height: 40px; padding: 0 24px; font-weight: 600; border-radius: 8px; display: inline-flex; align-items: center; gap: 8px;">
-                    <i class='bx bx-search-alt-2' style="font-size: 18px;"></i> Lọc
-                </button>
-            </div>
-        </div>
-    </form>
+            <button type="submit" class="btn btn-primary btn-filter">
+                <i class='bx bx-search'></i> Lọc
+            </button>
+            {% if tu_khoa or phong_loc or trang_thai_loc or tu_ngay or den_ngay %}
+            <a href="{% url 'danh_sach_bao_hong' %}" class="btn btn-outline btn-filter"><i class='bx bx-x'></i></a>
+            {% endif %}
+        </form>
+    </div>
 
     <!-- Data Table -->
-    <div class="table-container">
-        <table class="data-table report-table">
+    <div class="table-shell">
+        <table class="report-table">
             <thead>
                 <tr>
-                    <th class="text-center" width="50">STT</th>
+                    <th class="text-center" width="60">STT</th>
                     <th>THIẾT BỊ</th>
                     <th class="text-center">PHÒNG</th>
                     <th>NGƯỜI BÁO</th>
                     <th>MÔ TẢ</th>
                     <th class="text-center">TRẠNG THÁI</th>
                     <th class="text-center">NGÀY BÁO</th>
-                    <th class="text-center">THAO TÁC</th>
+                    <th class="text-center" width="120">THAO TÁC</th>
                 </tr>
             </thead>
             <tbody>
                 {% for bh in bao_hongs %}
                 <tr>
                     <td class="text-center">{{ bao_hongs.start_index|add:forloop.counter0 }}</td>
-                    <td style="font-weight: 500;">{{ bh.thiet_bi.ten_thiet_bi }}</td>
-                    <td class="text-center"><span style="color: #000; font-weight: 700;">{{ bh.thiet_bi.phong_hoc.ma_phong }}</span></td>
+                    <td style="font-weight: 600; color: var(--color-primary);">{{ bh.thiet_bi.ten_thiet_bi }}</td>
+                    <td class="text-center" style="font-weight: 700;">{{ bh.thiet_bi.phong_hoc.ma_phong }}</td>
                     <td>{{ bh.nguoi_bao.ho_ten }}</td>
-                    <td><div class="text-truncate" style="max-width: 200px;" title="{{ bh.mo_ta }}">{{ bh.mo_ta }}</div></td>
+                    <td><div class="text-truncate" style="max-width: 250px;" title="{{ bh.mo_ta }}">{{ bh.mo_ta }}</div></td>
                     <td class="text-center">
-                        {% if bh.trang_thai == 'cho_xu_ly' %}<span class="badge badge-warning">Chờ xử lý</span>
-                        {% elif bh.trang_thai == 'dang_sua' %}<span class="badge badge-accent">Đang sửa</span>
-                        {% else %}<span class="badge badge-success">Đã sửa</span>{% endif %}
+                        {% if bh.trang_thai == 'cho_xu_ly' %}<span class="badge badge-warning" style="font-size: 11px;">Chờ xử lý</span>
+                        {% elif bh.trang_thai == 'dang_sua' %}<span class="badge badge-accent" style="font-size: 11px;">Đang sửa</span>
+                        {% else %}<span class="badge badge-success" style="font-size: 11px;">Đã sửa</span>{% endif %}
                     </td>
                     <td class="text-center" style="font-size: 13px; color: #6b7280;">{{ bh.ngay_bao|date:"d/m/Y H:i" }}</td>
                     <td class="text-center">
                         <div class="action-btns">
                             {% with formatted_date=bh.ngay_bao|date:"d/m/Y H:i" %}
-                            <button class="btn-icon btn-view" title="Xem chi tiết" 
+                            <button class="btn-icon-v2" title="Xem chi tiết" 
                                 data-device="{{ bh.thiet_bi.ten_thiet_bi|escapejs }}"
                                 data-room="{{ bh.thiet_bi.phong_hoc.ma_phong|escapejs }}"
                                 data-reporter="{{ bh.nguoi_bao.ho_ten|escapejs }}"
@@ -271,12 +294,12 @@
                             {% endwith %}
                             
                             {% if bh.trang_thai == 'cho_xu_ly' %}
-                            <button type="button" class="btn-icon btn-approve" title="Duyệt yêu cầu" 
+                            <button type="button" class="btn-icon-v2 btn-warning" title="Duyệt sửa" 
                                 data-status="dang_sua" data-id="{{ bh.id }}" onclick="openConfirm(this)">
-                                <i class='bx bx-check-circle'></i>
+                                <i class='bx bx-wrench'></i>
                             </button>
                             {% elif bh.trang_thai == 'dang_sua' %}
-                            <button type="button" class="btn-icon btn-success-soft" title="Hoàn thành" 
+                            <button type="button" class="btn-icon-v2 btn-success" title="Hoàn thành" 
                                 data-status="da_sua" data-id="{{ bh.id }}" onclick="openConfirm(this)">
                                 <i class='bx bx-check-double'></i>
                             </button>
@@ -285,7 +308,7 @@
                     </td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="8" class="empty-state">Không có dữ liệu báo hỏng nào.</td></tr>
+                <tr><td colspan="8" class="empty-state" style="padding: 60px;">Không có dữ liệu báo hỏng nào.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
@@ -293,11 +316,11 @@
     {% with page_obj=bao_hongs %}{% include 'components/Pagination.html' %}{% endwith %}
 </div>
 
-<!-- Modal Chi tiết -->
+<!-- Modal Details -->
 <div id="reportModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
-            <h3>Nội dung báo hỏng</h3>
+            <h3>Chi tiết sự cố thiết bị</h3>
             <span class="close-modal" onclick="closeModal()">&times;</span>
         </div>
         <div class="modal-body">
@@ -306,15 +329,15 @@
     </div>
 </div>
 
-<!-- Popover Confirm Template (Hidden) -->
+<!-- Confirm Popover -->
 <div id="confirmPopover" class="popover-confirm">
-    <div class="popover-title" id="popoverTitle">Xác nhận thao tác?</div>
+    <div class="popover-title" id="popoverTitle">Xác nhận?</div>
     <div class="popover-footer">
-        <button class="btn btn-secondary btn-sm" style="padding: 4px 10px; font-size: 12px;" onclick="closePopover()">Huỷ</button>
+        <button class="btn btn-secondary btn-sm" onclick="closePopover()">Huỷ</button>
         <form id="popoverForm" method="POST">
             {% csrf_token %}
             <input type="hidden" name="trang_thai" id="popoverStatus">
-            <button type="submit" class="btn btn-primary btn-sm" style="padding: 4px 10px; font-size: 12px;">Đồng ý</button>
+            <button type="submit" class="btn btn-primary btn-sm">Xác nhận</button>
         </form>
     </div>
 </div>
@@ -328,27 +351,27 @@
         const desc = btn.getAttribute('data-desc');
 
         let content = `
-            <div style="padding: 10px 0;">
-                <div style="margin-bottom: 15px; display: flex; align-items: baseline;">
-                    <div style="width: 130px; color: #64748b; font-size: 13px; font-weight: 500;">Thiết bị</div>
-                    <div style="flex: 1; color: #1e293b; font-weight: 600; font-size: 15px;">${device}</div>
+            <div style="padding: 5px 0;">
+                <div style="margin-bottom: 12px; display: flex; align-items: baseline;">
+                    <div style="width: 120px; color: #64748b; font-size: 13px; font-weight: 500;">Thiết bị:</div>
+                    <div style="flex: 1; color: #1e293b; font-weight: 600;">${device}</div>
                 </div>
-                <div style="margin-bottom: 15px; display: flex; align-items: baseline;">
-                    <div style="width: 130px; color: #64748b; font-size: 13px; font-weight: 500;">Phòng học</div>
-                    <div style="flex: 1; color: #1e293b; font-weight: 600; font-size: 15px;">${room}</div>
+                <div style="margin-bottom: 12px; display: flex; align-items: baseline;">
+                    <div style="width: 120px; color: #64748b; font-size: 13px; font-weight: 500;">Phòng học:</div>
+                    <div style="flex: 1; color: #1e293b; font-weight: 600;">${room}</div>
                 </div>
-                <div style="margin-bottom: 15px; display: flex; align-items: baseline;">
-                    <div style="width: 130px; color: #64748b; font-size: 13px; font-weight: 500;">Người báo</div>
-                    <div style="flex: 1; color: #1e293b; font-weight: 600; font-size: 15px;">${reporter}</div>
+                <div style="margin-bottom: 12px; display: flex; align-items: baseline;">
+                    <div style="width: 120px; color: #64748b; font-size: 13px; font-weight: 500;">Người báo:</div>
+                    <div style="flex: 1; color: #1e293b;">${reporter}</div>
                 </div>
-                <div style="margin-bottom: 25px; display: flex; align-items: baseline;">
-                    <div style="width: 130px; color: #64748b; font-size: 13px; font-weight: 500;">Thời gian</div>
-                    <div style="flex: 1; color: #1e293b; font-weight: 600; font-size: 15px;">${time}</div>
+                <div style="margin-bottom: 20px; display: flex; align-items: baseline;">
+                    <div style="width: 120px; color: #64748b; font-size: 13px; font-weight: 500;">Thời gian:</div>
+                    <div style="flex: 1; color: #1e293b;">${time}</div>
                 </div>
                 
-                <div style="border-top: 1px solid #f1f5f9; padding-top: 20px;">
-                    <div style="color: #64748b; font-size: 13px; font-weight: 500; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;">Mô tả chi tiết sự cố</div>
-                    <div style="color: #334155; line-height: 1.7; font-size: 15px; white-space: pre-line;">${desc}</div>
+                <div style="border-top: 1px solid #f1f5f9; padding-top: 15px;">
+                    <div style="color: #64748b; font-size: 12px; font-weight: 700; margin-bottom: 8px; text-transform: uppercase;">Mô tả sự cố:</div>
+                    <div style="color: #334155; line-height: 1.6; font-size: 14px; white-space: pre-line; background: #f8fafc; padding: 12px; border-radius: 4px;">${desc}</div>
                 </div>
             </div>
         `;
@@ -370,11 +393,11 @@
         const rect = btn.getBoundingClientRect();
         
         popover.style.top = (rect.top + window.scrollY - 100) + 'px';
-        popover.style.left = (rect.left + window.scrollX - 180) + 'px';
+        popover.style.left = (rect.left + window.scrollX - 160) + 'px';
         
         document.getElementById('popoverStatus').value = status;
         document.getElementById('popoverForm').action = `/equipment/reports/${id}/status/`;
-        document.getElementById('popoverTitle').innerText = status === 'dang_sua' ? 'Duyệt sửa chữa?' : 'Hoàn thành sửa chữa?';
+        document.getElementById('popoverTitle').innerText = status === 'dang_sua' ? 'Duyệt sửa chữa?' : 'Xác nhận hoàn thành?';
         
         popover.classList.add('active');
         

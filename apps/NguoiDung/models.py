@@ -2,6 +2,21 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 
 
+class LopSinhHoat(models.Model):
+    """Model Lớp sinh hoạt (ví dụ: 21TCLC_DT1)."""
+    ten_lop = models.CharField('Tên lớp sinh hoạt', max_length=50, unique=True)
+    khoa_hoc = models.IntegerField('Khóa học', default=2021)
+    khoa_quan_ly = models.CharField('Khoa quản lý', max_length=100, blank=True)
+
+    class Meta:
+        db_table = 'lop_sinh_hoat'
+        verbose_name = 'Lớp sinh hoạt'
+        verbose_name_plural = 'Lớp sinh hoạt'
+
+    def __str__(self):
+        return self.ten_lop
+
+
 class NguoiDung(AbstractUser):
     """Model người dùng mở rộng từ AbstractUser."""
 
@@ -18,6 +33,14 @@ class NguoiDung(AbstractUser):
         max_length=20,
         choices=VaiTro.choices,
         default=VaiTro.SINH_VIEN,
+    )
+    lop_sinh_hoat = models.ForeignKey(
+        LopSinhHoat, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name='sinh_viens',
+        verbose_name='Lớp sinh hoạt'
     )
 
     class Meta:

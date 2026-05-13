@@ -4,50 +4,106 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Đăng nhập - OptiDUT</title>
+    <title>Đăng nhập | OptiDUT - Hệ thống quản lý thông minh</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Icons -->
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    
+    <!-- Styles -->
     <link rel="stylesheet" href="{% static 'css/base.css' %}">
-    <link rel="stylesheet" href="{% static 'css/forms.css' %}">
-    <link rel="stylesheet" href="{% static 'css/responsive.css' %}">
+    <link rel="stylesheet" href="{% static 'css/login.css' %}">
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #fff; }
+    </style>
 </head>
 <body>
-    <div class="login-page">
-        <div class="login-box">
-            <div class="login-header">
-                <img src="{% static 'img/logo-dut.png' %}" alt="DUT" class="login-logo" onerror="this.style.display='none'">
-                <h1>OptiDUT</h1>
-                <p>Hệ thống quản lý phòng học</p>
-            </div>
-
-            {% if messages %}
-            <ul class="messages">
-                {% for message in messages %}
-                <li class="message {{ message.tags }}">{{ message }}</li>
-                {% endfor %}
-            </ul>
-            {% endif %}
-
-            {% if form.errors %}
-            <div class="form-errors">
-                <p>Tên đăng nhập hoặc mật khẩu không đúng.</p>
-            </div>
-            {% endif %}
-
-            <form method="post">
-                {% csrf_token %}
-                <div class="form-group">
-                    <label class="form-label" for="id_username">Tên đăng nhập</label>
-                    {{ form.username }}
+    <div class="login-container">
+        <!-- Left Side: Branding & Visual -->
+        <div class="login-visual">
+            <div class="visual-content">
+                <div class="visual-logo">
+                    <img src="{% static 'img/logo.png' %}" alt="DUT Logo">
+                    <div class="logo-text">
+                        <h1>OptiDUT</h1>
+                        <span>Hệ thống Quản lý Thông minh</span>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label class="form-label" for="id_password">Mật khẩu</label>
-                    {{ form.password }}
+                
+                <div class="visual-hero">
+                    <h2>Tối ưu hóa không gian học tập tại DUT.</h2>
+                    <p>Giải pháp quản lý phòng học và thiết bị tiên tiến, giúp giảng viên và sinh viên kết nối hiệu quả hơn trong môi trường học thuật hiện đại.</p>
                 </div>
-                <button type="submit" class="btn btn-accent login-btn">Đăng nhập</button>
-            </form>
-            <div style="margin-top: 20px; font-size: 0.9em; color: var(--text-muted); text-align: center;">
-                <p><strong>Tài khoản mẫu (Mật khẩu giống Tên đăng nhập):</strong></p>
-                <p>Quản trị: <code>admin</code> | Giáo vụ: <code>giaovu</code></p>
-                <p>Giảng viên: <code>giangvien</code> | Sinh viên: <code>sinhvien</code></p>
+            </div>
+            
+            <div class="visual-footer">
+                <a href="#">Trang chủ</a>
+                <a href="#">Hướng dẫn</a>
+                <a href="#">Hỗ trợ kỹ thuật</a>
+                <a href="#">Về chúng tôi</a>
+            </div>
+        </div>
+
+        <!-- Right Side: Login Form -->
+        <div class="login-form-side">
+            <div class="login-form-box">
+                <div class="form-header">
+                    <h3>Chào mừng trở lại!</h3>
+                    <p>Vui lòng đăng nhập vào tài khoản của bạn</p>
+                </div>
+
+                {% if messages %}
+                <div class="messages" style="margin-bottom: 20px;">
+                    {% for message in messages %}
+                    <div class="message {{ message.tags }}" style="padding: 12px; border-radius: 4px; font-size: 14px; margin-bottom: 10px; border-left: 4px solid #f44336; background: #ffebee; color: #c62828;">
+                        <i class='bx bx-error-circle'></i> {{ message }}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                {% if form.errors %}
+                <div class="message error" style="padding: 12px; border-radius: 4px; font-size: 14px; margin-bottom: 20px; border-left: 4px solid #f44336; background: #ffebee; color: #c62828;">
+                    <i class='bx bx-error-circle'></i> Tên đăng nhập hoặc mật khẩu không đúng.
+                </div>
+                {% endif %}
+
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label class="form-label">Tên đăng nhập</label>
+                        <div class="input-container">
+                            <i class='bx bx-user'></i>
+                            <input type="text" name="username" class="form-control" placeholder="Nhập mã nhân viên/SV" required id="id_username">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Mật khẩu</label>
+                        <div class="input-container">
+                            <i class='bx bx-lock-alt'></i>
+                            <input type="password" name="password" class="form-control" placeholder="••••••••" required id="id_password">
+                        </div>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--color-text-secondary); cursor: pointer;">
+                            <input type="checkbox" style="width: 16px; height: 16px;"> Ghi nhớ tôi
+                        </label>
+                        <a href="#" style="font-size: 14px; color: var(--color-primary); font-weight: 500;">Quên mật khẩu?</a>
+                    </div>
+
+                    <button type="submit" class="login-btn-large">Đăng nhập</button>
+                </form>
+
+                <p style="text-align: center; margin-top: 40px; font-size: 13px; color: var(--color-text-secondary);">
+                    &copy; 2026 Trường Đại học Bách khoa - ĐHĐN. Phát triển bởi OptiTeam.
+                </p>
             </div>
         </div>
     </div>

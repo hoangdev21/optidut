@@ -4,173 +4,101 @@
 {% block extra_css %}
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <style>
-    .schedule-form-wrapper {
-        max-width: 1200px;
-        margin: 20px auto;
-        padding: 0 20px;
-    }
-    .form-section {
-        margin-bottom: 50px;
-    }
-    .form-section-title {
-        font-size: 18px;
-        font-weight: 600;
-        color: var(--color-text);
-        margin-bottom: 24px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding-bottom: 12px;
-        border-bottom: 1px solid var(--color-border);
-    }
-    .form-section-title i {
-        font-size: 24px;
-        color: var(--color-primary);
-        opacity: 0.8;
-    }
-    .form-row {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 40px;
-        margin-bottom: 24px;
-    }
-    .form-group label {
-        font-weight: 500;
-        color: var(--color-text);
-        font-size: 14px;
-        margin-bottom: 8px;
-        display: block;
-    }
-    .form-actions {
-        display: flex;
-        justify-content: flex-start;
-        gap: 16px;
-        margin-top: 40px;
-        padding-top: 30px;
-        border-top: 1px solid var(--color-border);
-    }
-    .form-actions .btn {
-        padding: 10px 24px;
-        font-size: 15px;
-    }
+    .page-content { max-width: 1000px !important; margin: 0 auto !important; padding: 30px !important; }
     
-    /* Select2 custom styling */
+    .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+    .page-title { font-size: 20px; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 10px; margin: 0; }
+
+    .form-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+
+    .hint-box { background: #f8fafc; border-left: 4px solid #003366; padding: 12px 16px; margin-bottom: 24px; color: #475569; font-size: 13px; line-height: 1.5; border-radius: 0 4px 4px 0; }
+
+    .section-label { font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px; margin-bottom: 16px; margin-top: 24px; }
+    .section-label:first-of-type { margin-top: 0; }
+
+    .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group.full { grid-column: span 2; }
+    
+    .form-label { font-size: 13px; font-weight: 600; color: #334155; }
+    .form-input { height: 40px; border-radius: 6px; border: 1px solid #e2e8f0; padding: 0 12px; font-size: 13px; transition: all 0.2s; }
+    .form-input:focus { border-color: #003366; outline: none; box-shadow: 0 0 0 3px rgba(0, 51, 102, 0.1); }
+
+    .error-list { color: #dc2626; font-size: 12px; margin-top: 4px; list-style: none; padding: 0; }
+    
+    .form-actions { display: flex; gap: 10px; margin-top: 32px; border-top: 1px solid #f1f5f9; padding-top: 20px; justify-content: flex-end; }
+    .btn { height: 40px; border-radius: 6px; padding: 0 20px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; border: 1px solid transparent; transition: all 0.2s; }
+    .btn-primary { background: #003366; color: white; }
+    .btn-primary:hover { background: #00264d; }
+    .btn-outline { background: white; border-color: #e2e8f0; color: #64748b; }
+    .btn-outline:hover { background: #f8fafc; color: #1e293b; border-color: #cbd5e1; }
+
+    /* Custom Select2 for New Design */
     .select2-container--default .select2-selection--single {
-        height: 42px;
-        border: 1px solid var(--color-border);
-        border-radius: 6px;
-        display: flex;
-        align-items: center;
-        transition: all 0.2s ease;
+        height: 40px; border: 1px solid #e2e8f0; border-radius: 6px; display: flex; align-items: center;
     }
     .select2-container--default .select2-selection--single .select2-selection__rendered {
-        padding-left: 14px;
-        color: var(--color-text);
-        font-family: var(--font-family);
-        font-size: 14px;
+        padding-left: 12px; font-size: 13px; color: #1e293b;
     }
-    .select2-container--default .select2-selection--single .select2-selection__arrow {
-        height: 40px;
-        right: 12px;
-    }
-    .select2-container--default.select2-container--open .select2-selection--single {
-        border-color: var(--color-primary);
-        box-shadow: 0 0 0 3px rgba(14, 56, 122, 0.1);
-    }
-    .select2-dropdown {
-        border: 1px solid var(--color-border);
-        border-radius: 8px;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.08);
-        overflow: hidden;
-        padding-bottom: 4px;
-        z-index: 1050;
-    }
-    .select2-search--dropdown {
-        padding: 12px;
-    }
-    .select2-search__field {
-        border: 1px solid var(--color-border) !important;
-        border-radius: 6px !important;
-        padding: 8px 12px !important;
-        font-family: var(--font-family) !important;
-        font-size: 14px !important;
-        outline: none !important;
-        transition: all 0.2s;
-    }
-    .select2-search__field:focus {
-        border-color: var(--color-primary) !important;
-        box-shadow: 0 0 0 3px rgba(14, 56, 122, 0.1) !important;
-    }
-    .select2-results__option {
-        padding: 10px 16px;
-        font-size: 14px;
-        color: var(--color-text);
-        transition: background-color 0.1s;
-    }
-    .select2-results__option--highlighted[aria-selected] {
-        background-color: var(--color-bg) !important;
-        color: var(--color-primary) !important;
-        font-weight: 500;
-    }
-    .select2-results__option[aria-selected="true"] {
-        background-color: rgba(14, 56, 122, 0.05) !important;
-        color: var(--color-primary);
-        font-weight: 600;
+    .select2-container--default .select2-selection--single .select2-selection__arrow { height: 38px; right: 10px; }
+    .select2-dropdown { border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); overflow: hidden; }
+    .select2-results__option { padding: 10px 12px; font-size: 13px; }
+    .select2-results__option--highlighted[aria-selected] { background-color: #003366 !important; }
+
+    @media (max-width: 640px) {
+        .form-grid { grid-template-columns: 1fr; }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <div class="header-content">
-        <h1 class="page-title">Chỉnh sửa lịch học: {{ lich.mon_hoc }}</h1>
-        <p>Hệ thống sẽ tự động kiểm tra xem những cập nhật mới có bị trùng thời gian/phòng học không.</p>
+<div class="schedule-admin">
+    <div class="page-header">
+        <h1 class="page-title"><i class='bx bx-edit-alt'></i> Chỉnh sửa lịch học: {{ lich.mon_hoc }}</h1>
+        <a href="{% url 'danh_sach_lich' %}" class="btn btn-outline">
+            <i class='bx bx-arrow-back'></i> Quay lại
+        </a>
     </div>
-</div>
 
-<div class="schedule-form-wrapper">
-    {% if form.errors %}
-    <div class="form-errors">
-        <div style="font-weight: 600; margin-bottom: 8px;"><i class='bx bx-error-circle'></i> Vui lòng kiểm tra lại thông tin:</div>
-        {% if form.non_field_errors %}
-            {% for e in form.non_field_errors %}<p>{{ e }}</p>{% endfor %}
+    <div class="form-card">
+        <div class="hint-box">
+            <i class='bx bx-info-circle'></i> Bạn đang cập nhật thông tin cho lịch học. Hệ thống sẽ tự động kiểm tra xem các thay đổi mới có gây xung đột thời gian, phòng học hoặc giảng viên hay không.
+        </div>
+
+        {% if form.errors %}
+        <div class="form-errors" style="background: #fef2f2; border: 1px solid #fee2e2; padding: 12px; border-radius: 6px; margin-bottom: 24px; color: #b91c1c; font-size: 13px;">
+            <div style="font-weight: 700; margin-bottom: 4px;">Vui lòng kiểm tra các lỗi sau:</div>
+            {% if form.non_field_errors %}
+                {% for e in form.non_field_errors %}<p>{{ e }}</p>{% endfor %}
+            {% endif %}
+            <ul style="padding-left: 20px; margin: 4px 0;">
+                {% for field, errors in form.errors.items %}
+                    {% if field != '__all__' %}
+                        {% for e in errors %}<li>{{ e }}</li>{% endfor %}
+                    {% endif %}
+                {% endfor %}
+            </ul>
+        </div>
         {% endif %}
-        <ul>
-            {% for field, errors in form.errors.items %}
-                {% if field != '__all__' %}
-                    {% for e in errors %}<li>{{ field }}: {{ e }}</li>{% endfor %}
-                {% endif %}
-            {% endfor %}
-        </ul>
-    </div>
-    {% endif %}
 
-    <form method="post">
-        {% csrf_token %}
-        
-        <!-- Section 1: Thông tin môn & lớp -->
-        <div class="form-section">
-            <div class="form-section-title">
-                <i class='bx bx-book-bookmark'></i> 1. Thông tin Khóa học
-            </div>
-            <div class="form-row">
+        <form method="post">
+            {% csrf_token %}
+            
+            <p class="section-label">1. Thông tin Khóa học</p>
+            <div class="form-grid">
                 <div class="form-group">
-                    <label class="form-label">Tên môn học <span style="color:var(--color-danger)">*</span></label>
+                    <label class="form-label">Tên môn học <span style="color:#dc2626">*</span></label>
                     {{ form.mon_hoc }}
                     <datalist id="mon_hoc_list">
-                        {% for m in ds_mon_hoc %}
-                            {% if m %}<option value="{{ m }}"></option>{% endif %}
-                        {% endfor %}
+                        {% for m in ds_mon_hoc %}{% if m %}<option value="{{ m }}"></option>{% endif %}{% endfor %}
                     </datalist>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Chọn lớp học <span style="color:var(--color-danger)">*</span></label>
+                    <label class="form-label">Chọn lớp học <span style="color:#dc2626">*</span></label>
                     {{ form.lop_hoc }}
                 </div>
-            </div>
-            <div class="form-row">
                 <div class="form-group">
-                    <label class="form-label">Giảng viên phụ trách <span style="color:var(--color-danger)">*</span></label>
+                    <label class="form-label">Giảng viên phụ trách <span style="color:#dc2626">*</span></label>
                     {{ form.giang_vien }}
                 </div>
                 <div class="form-group">
@@ -178,69 +106,91 @@
                     {{ form.si_so }}
                 </div>
             </div>
-        </div>
 
-        <!-- Section 2: Thời gian & Địa điểm -->
-        <div class="form-section">
-            <div class="form-section-title">
-                <i class='bx bx-calendar-event'></i> 2. Thời gian & Địa điểm
-            </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label class="form-label">Phòng học (Có thể tìm kiếm mã phòng) <span style="color:var(--color-danger)">*</span></label>
-                    {{ form.phong_hoc }}
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Ngày học <span style="color:var(--color-danger)">*</span></label>
+            <p class="section-label">2. Thời gian & Địa điểm</p>
+            <div class="form-grid">
+                <div class="form-group full">
+                    <label class="form-label">Ngày học <span style="color:#dc2626">*</span></label>
                     {{ form.ngay_hoc }}
                 </div>
-            </div>
-            <div class="form-row">
                 <div class="form-group">
-                    <label class="form-label">Tiết bắt đầu (1-14) <span style="color:var(--color-danger)">*</span></label>
+                    <label class="form-label">Tiết bắt đầu (1-14) <span style="color:#dc2626">*</span></label>
                     {{ form.tiet_bat_dau }}
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Tiết kết thúc (1-14) <span style="color:var(--color-danger)">*</span></label>
+                    <label class="form-label">Tiết kết thúc (1-14) <span style="color:#dc2626">*</span></label>
                     {{ form.tiet_ket_thuc }}
                 </div>
+                <div class="form-group full">
+                    <label class="form-label">Phòng học <span style="color:#dc2626">*</span></label>
+                    {{ form.phong_hoc }}
+                </div>
             </div>
-        </div>
 
-        <!-- Section 3: Ghi chú -->
-        <div class="form-section">
-            <div class="form-section-title">
-                <i class='bx bx-note'></i> 3. Thông tin bổ sung
-            </div>
-            <div class="form-group">
-                <label class="form-label">Ghi chú (Không bắt buộc)</label>
+            <p class="section-label">3. Thông tin bổ sung</p>
+            <div class="form-group full">
+                <label class="form-label">Ghi chú (Tùy chọn)</label>
                 {{ form.ghi_chu }}
             </div>
             
             <div class="form-actions">
                 <a href="{% url 'danh_sach_lich' %}" class="btn btn-outline">Hủy bỏ</a>
-                <button type="submit" class="btn btn-primary"><i class='bx bx-save'></i> Lưu thay đổi</button>
+                <button type="submit" class="btn btn-primary">
+                    <i class='bx bx-save'></i> Lưu thay đổi
+                </button>
             </div>
-        </div>
-    </form>
+        </form>
+    </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
-<!-- jQuery is required for Select2 -->
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<!-- Select2 JS -->
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        // Initialize Select2 on form-select classes inside the form
-        $('.form-select').select2({
-            width: '100%',
-            language: {
-                noResults: function() {
-                    return "Không tìm thấy kết quả phù hợp";
-                }
-            }
+    $(document).ready(function() {
+        $('.form-select').select2({ width: '100%' });
+
+        const selectMon = $('#id_mon_hoc');
+        const selectLop = $('#id_lop_hoc');
+        const selectGV = $('#id_giang_vien');
+
+        // Khi chọn Môn học -> Lọc Lớp học phần
+        selectMon.on('change', function() {
+            const monId = $(this).val();
+            if (!monId) return;
+
+            fetch(`/schedules/api/loc-lop-theo-mon/?mon_id=${monId}`)
+                .then(res => res.json())
+                .then(data => {
+                    const currentLopId = selectLop.val();
+                    selectLop.empty().append('<option value="">---------</option>');
+                    data.lops.forEach(l => {
+                        selectLop.append(new Option(l.ten_lop, l.id));
+                    });
+                    if (data.lops.find(l => l.id == currentLopId)) {
+                        selectLop.val(currentLopId).trigger('change.select2');
+                    } else {
+                        selectLop.trigger('change');
+                    }
+                });
+        });
+
+        // Khi chọn Lớp học phần -> Tự động chọn Môn học và Giảng viên
+        selectLop.on('change', function() {
+            const lopId = $(this).val();
+            if (!lopId) return;
+
+            fetch(`/schedules/api/loc-lop-theo-mon/?lop_id=${lopId}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.mon_id) {
+                        selectMon.val(data.mon_id).trigger('change.select2');
+                    }
+                    if (data.giang_vien_id) {
+                        selectGV.val(data.giang_vien_id).trigger('change.select2');
+                    }
+                });
         });
     });
 </script>

@@ -45,7 +45,7 @@
     .sch-item { display: flex; align-items: center; padding: 16px; border-bottom: 1px solid #F1F5F9; transition: background 0.2s; }
     .sch-item:last-child { border-bottom: none; }
     .sch-item:hover { background: #F8FAFC; }
-    .sch-time { width: 100px; font-weight: 700; color: var(--color-primary); font-size: 14px; }
+    .sch-time { width: 110px; font-weight: 700; color: var(--color-primary); font-size: 14px; }
     .sch-info { flex: 1; }
     .sch-mon { font-weight: 600; color: var(--color-text); font-size: 15px; margin-bottom: 2px; }
     .sch-meta { font-size: 12px; color: var(--color-text-secondary); display: flex; gap: 12px; }
@@ -126,7 +126,12 @@
                 <div class="dash-card-body" style="padding: 0;">
                     {% for l in lich_day %}
                     <div class="sch-item">
-                        <div class="sch-time">Tiết {{ l.tiet_bat_dau }} - {{ l.tiet_ket_thuc }}</div>
+                        <div class="sch-time">
+                            Tiết {{ l.tiet_bat_dau }} - {{ l.tiet_ket_thuc }}
+                            <div style="font-size: 11px; color: var(--color-text-secondary); font-weight: 500; margin-top: 2px;">
+                                {{ l.gio_bat_dau }} - {{ l.gio_ket_thuc }}
+                            </div>
+                        </div>
                         <div class="sch-info">
                             <div class="sch-mon">{{ l.mon_hoc }}</div>
                             <div class="sch-meta">

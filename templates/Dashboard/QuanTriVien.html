@@ -173,16 +173,18 @@
 </div>
 
 {{ chart_data|json_script:"reg-data" }}
+{{ chart_labels|json_script:"reg-labels" }}
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     const ctx = document.getElementById('systemChart').getContext('2d');
     const chartData = JSON.parse(document.getElementById('reg-data').textContent);
+    const chartLabels = JSON.parse(document.getElementById('reg-labels').textContent);
     
     new Chart(ctx, {
         type: 'line',
         data: {
-            labels: ['Hôm nay', 'Ngày mai', 'Ngày kia', '+3 ngày', '+4 ngày', '+5 ngày', '+6 ngày'],
+            labels: chartLabels,
             datasets: [{
                 label: 'Tổng số lớp học',
                 data: chartData,

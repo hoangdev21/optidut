@@ -1,0 +1,188 @@
+{% extends 'base.html' %}
+{% block title %}Quản lý Lớp sinh hoạt - OptiDUT{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-content { max-width: 100% !important; padding: 20px 40px !important; }
+    .classes-admin { width: 100%; }
+    
+    /* Stats Grid */
+    .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 24px; }
+    .stat-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+    .stat-label { font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
+    .stat-value { font-size: 24px; font-weight: 800; color: #003366; }
+    .stat-note { font-size: 12px; color: #94a3b8; }
+
+    /* Toolbar & Filters */
+    .toolbar-shell { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+    .toolbar-row { display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; flex-wrap: wrap; }
+    .toolbar-left { display: flex; gap: 16px; flex: 1; flex-wrap: wrap; }
+    
+    .filter-group { display: flex; flex-direction: column; gap: 6px; }
+    .filter-group label { font-size: 12px; font-weight: 700; color: #475569; }
+    
+    .search-wrap { position: relative; min-width: 280px; }
+    .search-wrap i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; }
+    .form-input { height: 38px; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0 12px 0 36px; font-size: 13px; width: 100%; transition: all 0.2s; }
+    .form-input:focus { border-color: #003366; outline: none; box-shadow: 0 0 0 3px rgba(0, 51, 102, 0.1); }
+    
+    .form-select { height: 38px; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0 10px; font-size: 13px; background: #fff; min-width: 160px; outline: none; }
+    .form-select:focus { border-color: #003366; }
+
+    /* Table Design */
+    .table-shell { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+    .table-head { padding: 16px 20px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; }
+    .table-head strong { font-size: 15px; color: #1e293b; }
+
+    .data-table { width: 100%; border-collapse: collapse; }
+    .data-table thead th { background: #003366; color: #fff; padding: 12px 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; text-align: left; }
+    .data-table tbody td { padding: 14px 20px; border-bottom: 1px solid #f1f5f9; font-size: 14px; color: #334155; vertical-align: middle; }
+    .data-table tbody tr:hover { background: #f8fafc; }
+
+    .class-name { font-weight: 700; color: #003366; text-decoration: none; }
+    .class-name:hover { text-decoration: underline; }
+    
+    .count-chip { background: #eff6ff; color: #1d4ed8; padding: 4px 10px; border-radius: 99px; font-weight: 700; font-size: 12px; }
+    .khoa-chip { background: #f1f5f9; color: #475569; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+
+    .action-btns { display: flex; gap: 8px; }
+    .btn-icon { width: 32px; height: 32px; border-radius: 6px; display: flex; align-items: center; justify-content: center; border: 1px solid #e2e8f0; color: #64748b; background: white; cursor: pointer; text-decoration: none; transition: all 0.2s; }
+    .btn-icon:hover { background: #f8fafc; color: #0f172a; border-color: #cbd5e1; }
+    .btn-icon.btn-danger:hover { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
+
+    /* General Buttons */
+    .btn { height: 38px; border-radius: 6px; padding: 0 16px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; border: 1px solid transparent; transition: all 0.2s; text-decoration: none; }
+    .btn-primary { background: #003366; color: white; }
+    .btn-primary:hover { background: #00264d; }
+    .btn-outline { background: white; border-color: #e2e8f0; color: #64748b; }
+    .btn-outline:hover { background: #f8fafc; color: #1e293b; border-color: #cbd5e1; }
+
+    @media (max-width: 768px) {
+        .stats-grid { grid-template-columns: 1fr; }
+        .toolbar-row { flex-direction: column; align-items: stretch; }
+        .toolbar-left { flex-direction: column; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="classes-admin">
+    <div class="page-header" style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center;">
+        <h1 class="page-title"><i class='bx bx-building-house'></i> Quản lý Lớp sinh hoạt</h1>
+        <a href="{% url 'danh_sach_nguoi_dung' %}" class="btn btn-outline">
+            <i class='bx bx-arrow-back'></i> Quay lại
+        </a>
+    </div>
+
+    <!-- Stats Section -->
+    <section class="stats-grid">
+        <article class="stat-card">
+            <span class="stat-label">Tổng lớp sinh hoạt</span>
+            <div class="stat-value">{{ thong_ke.tong_lop }}</div>
+            <div class="stat-note">Lớp đang quản lý</div>
+        </article>
+        <article class="stat-card">
+            <span class="stat-label">Tổng sinh viên</span>
+            <div class="stat-value">{{ thong_ke.tong_sv }}</div>
+            <div class="stat-note">Sinh viên đang theo học</div>
+        </article>
+    </section>
+
+    <!-- Toolbar & Filters -->
+    <section class="toolbar-shell">
+        <form method="get" class="toolbar-row" id="filterForm">
+            <div class="toolbar-left">
+                <div class="filter-group">
+                    <label>Tìm kiếm nhanh</label>
+                    <div class="search-wrap">
+                        <i class='bx bx-search'></i>
+                        <input type="text" name="q" value="{{ tu_khoa }}" class="form-input" placeholder="Tên lớp, khoa quản lý...">
+                    </div>
+                </div>
+                
+                <div class="filter-group">
+                    <label>Khoa quản lý</label>
+                    <select name="khoa" class="form-select" onchange="this.form.submit()">
+                        <option value="">Tất cả khoa</option>
+                        {% for k in ds_khoa %}
+                        <option value="{{ k }}" {% if k == khoa_loc %}selected{% endif %}>{{ k|default:"Chưa rõ" }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label>Khóa học</label>
+                    <select name="khoa_hoc" class="form-select" onchange="this.form.submit()">
+                        <option value="">Tất cả khóa</option>
+                        {% for kh in ds_khoa_hoc %}
+                        <option value="{{ kh }}" {% if kh|stringformat:"i" == khoa_hoc_loc %}selected{% endif %}>Khóa {{ kh }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="toolbar-actions">
+                <button type="submit" class="btn btn-primary">Lọc dữ liệu</button>
+                <a href="?" class="btn btn-outline" title="Đặt lại bộ lọc">
+                    <i class='bx bx-refresh'></i>
+                </a>
+            </div>
+        </form>
+    </section>
+
+    <!-- Data Table -->
+    <section class="table-shell">
+        <div class="table-head">
+            <strong>Danh sách các lớp sinh hoạt</strong>
+            <span style="font-size: 13px; color: #64748b;">Hiển thị {{ lops|length }} kết quả</span>
+        </div>
+        <div style="overflow-x: auto;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th width="60">STT</th>
+                        <th>Tên lớp sinh hoạt</th>
+                        <th>Khóa</th>
+                        <th>Khoa quản lý</th>
+                        <th width="140">Số sinh viên</th>
+                        <th width="100">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for lop in lops %}
+                    <tr>
+                        <td><span style="color: #94a3b8; font-weight: 600;">{{ forloop.counter }}</span></td>
+                        <td><span class="class-name">{{ lop.ten_lop }}</span></td>
+                        <td><span class="khoa-chip">K{{ lop.khoa_hoc }}</span></td>
+                        <td>{{ lop.khoa_quan_ly|default:"—" }}</td>
+                        <td><span class="count-chip">{{ lop.so_sv }} sinh viên</span></td>
+                        <td>
+                            <div class="action-btns">
+                                <a href="{% url 'sua_lop_sinh_hoat' lop.pk %}" class="btn-icon" title="Chỉnh sửa">
+                                    <i class='bx bx-edit-alt'></i>
+                                </a>
+                                <form action="{% url 'xoa_lop_sinh_hoat' lop.pk %}" method="POST" style="display:inline;" onsubmit="return confirm('Xác nhận xóa lớp này? Thao tác này sẽ làm mất thông tin lớp của sinh viên.')">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn-icon btn-danger" title="Xóa">
+                                        <i class='bx bx-trash'></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6">
+                            <div style="padding: 60px; text-align: center; color: #94a3b8;">
+                                <i class='bx bx-search-alt' style="font-size: 48px; display: block; margin-bottom: 16px; opacity: 0.3;"></i>
+                                <p>Không tìm thấy lớp sinh hoạt nào phù hợp với bộ lọc.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+{% endblock %}

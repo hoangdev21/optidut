@@ -2,11 +2,16 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.paginator import Paginator
-from django.http import JsonResponse
-from django.db.models import Count, Q
+from django.core.cache import cache
+from django.http import HttpResponse, JsonResponse
+from django.db import transaction
+from django.db.models import Count, Q, Case, When, Value, IntegerField
 from django.utils import timezone
 from datetime import datetime, timedelta
-from .models import LichHoc, LopHoc, DangKyHocPhan, YeuCauDoiLich, KHUNG_GIO_TIET
+import io
+import csv
+
+from .models import LichHoc, LopHoc, MonHoc, DangKyHocPhan, YeuCauDoiLich, KHUNG_GIO_TIET
 from .forms import FormLichHoc, FormLopHoc
 from apps.PhongHoc.models import PhongHoc
 
@@ -62,18 +67,28 @@ def danh_sach_lich(request):
     ngay_truoc = ngay_hien_tai - timedelta(days=1)
     ngay_sau = ngay_hien_tai + timedelta(days=1)
     
+    # Khởi tạo queryset
     queryset = LichHoc.objects.select_related(
-        'giang_vien', 'phong_hoc', 'lop_hoc'
+        'mon_hoc', 'giang_vien', 'phong_hoc', 'lop_hoc'
     ).filter(ngay_hoc=ngay_hien_tai)
 
-    # Lọc theo giảng viên (cho giảng viên chỉ thấy lịch mình)
-    if request.user.la_giang_vien:
+    # PHÂN QUYỀN HIỂN THỊ DỮ LIỆU CHÍNH
+    if request.user.la_sinh_vien:
+        # Sinh viên: Chỉ thấy lịch của các lớp mình đã đăng ký
+        lop_ids = DangKyHocPhan.objects.filter(sinh_vien=request.user).values_list('lop_hoc_id', flat=True)
+        queryset = queryset.filter(lop_hoc_id__in=lop_ids)
+    elif request.user.la_giang_vien:
+        # Giảng viên: Chỉ thấy lịch dạy của mình
         queryset = queryset.filter(giang_vien=request.user)
+    # Admin/Giáo vụ: Thấy toàn bộ (không cần filter thêm)
 
     # Tìm kiếm
     tu_khoa = request.GET.get('q', '')
     if tu_khoa:
-        queryset = queryset.filter(mon_hoc__icontains=tu_khoa)
+        queryset = queryset.filter(
+            Q(mon_hoc__ten_mon__icontains=tu_khoa) |
+            Q(mon_hoc__ma_mon__icontains=tu_khoa)
+        )
 
     # Bộ lọc nâng cao
     phong_loc = request.GET.get('phong', '')
@@ -109,7 +124,14 @@ def danh_sach_lich(request):
     if trang_thai:
         queryset = queryset.filter(trang_thai=trang_thai)
 
-    queryset = queryset.order_by('tiet_bat_dau')
+    # Sắp xếp: Ưu tiên lịch hoạt động, sau đó theo tiết bắt đầu
+    queryset = queryset.annotate(
+        priority=Case(
+            When(trang_thai='hoat_dong', then=Value(1)),
+            default=Value(2),
+            output_field=IntegerField(),
+        )
+    ).order_by('priority', 'tiet_bat_dau')
 
     page_size = request.GET.get('page_size', '10')
     try:
@@ -125,18 +147,20 @@ def danh_sach_lich(request):
     thu_map = {0: 'Thứ Hai', 1: 'Thứ Ba', 2: 'Thứ Tư', 3: 'Thứ Năm', 4: 'Thứ Sáu', 5: 'Thứ Bảy', 6: 'Chủ Nhật'}
     ten_thu = thu_map.get(ngay_hien_tai.weekday(), '')
 
-    # Tùy chọn filter
-    ds_phong = LichHoc.objects.filter(ngay_hoc=ngay_hien_tai).values_list(
-        'phong_hoc_id', 'phong_hoc__ma_phong'
-    ).distinct().order_by('phong_hoc__ma_phong')
-    if request.user.la_giang_vien:
-        ds_phong = ds_phong.filter(giang_vien=request.user)
+    # TÙY CHỌN FILTER TRONG TEMPLATE (Cũng phải lọc theo quyền)
+    ds_phong_qs = LichHoc.objects.filter(ngay_hoc=ngay_hien_tai)
+    ds_lop_qs = LichHoc.objects.filter(ngay_hoc=ngay_hien_tai, lop_hoc__isnull=False)
 
-    ds_lop = LichHoc.objects.filter(ngay_hoc=ngay_hien_tai, lop_hoc__isnull=False).values_list(
-        'lop_hoc_id', 'lop_hoc__ten_lop'
-    ).distinct().order_by('lop_hoc__ten_lop')
-    if request.user.la_giang_vien:
-        ds_lop = ds_lop.filter(giang_vien=request.user)
+    if request.user.la_sinh_vien:
+        lop_ids_personal = DangKyHocPhan.objects.filter(sinh_vien=request.user).values_list('lop_hoc_id', flat=True)
+        ds_phong_qs = ds_phong_qs.filter(lop_hoc_id__in=lop_ids_personal)
+        ds_lop_qs = ds_lop_qs.filter(lop_hoc_id__in=lop_ids_personal)
+    elif request.user.la_giang_vien:
+        ds_phong_qs = ds_phong_qs.filter(giang_vien=request.user)
+        ds_lop_qs = ds_lop_qs.filter(giang_vien=request.user)
+
+    ds_phong = ds_phong_qs.values_list('phong_hoc_id', 'phong_hoc__ma_phong').distinct().order_by('phong_hoc__ma_phong')
+    ds_lop = ds_lop_qs.values_list('lop_hoc_id', 'lop_hoc__ten_lop').distinct().order_by('lop_hoc__ten_lop')
 
     context = {
         'lich_hocs': lich_hocs,
@@ -194,7 +218,7 @@ def them_lich(request):
             return redirect('danh_sach_lich')
     else:
         form = FormLichHoc()
-    ds_mon_hoc = LichHoc.objects.values_list('mon_hoc', flat=True).distinct()
+    ds_mon_hoc = MonHoc.objects.order_by('ma_mon', 'ten_mon')
     return render(request, 'LichHoc/ThemMoi.html', {'form': form, 'ds_mon_hoc': ds_mon_hoc})
 
 
@@ -232,7 +256,7 @@ def chinh_sua_lich(request, pk):
             return redirect('danh_sach_lich')
     else:
         form = FormLichHoc(instance=lich)
-    ds_mon_hoc = LichHoc.objects.values_list('mon_hoc', flat=True).distinct()
+    ds_mon_hoc = MonHoc.objects.order_by('ma_mon', 'ten_mon')
     return render(request, 'LichHoc/ChinhSua.html', {'form': form, 'lich': lich, 'ds_mon_hoc': ds_mon_hoc})
 
 
@@ -394,9 +418,7 @@ def goi_y_phong_toi_uu(request):
         score -= (diff * 2)
 
         # B. Ưu tiên Loại phòng (Quan trọng cho thực hành)
-        if lop_obj and lop_obj.loai_lop: # Giả sử lớp có trường loai_lop
-            if lop_obj.loai_lop == phong.loai_phong:
-                score += 30
+        # Bỏ qua vì LopHoc không có trường loai_lop hiện tại
         
         # C. Ưu tiên Vị trí (Tòa nhà)
         if khoa_id:
@@ -425,6 +447,27 @@ def goi_y_phong_toi_uu(request):
 
     return JsonResponse({'data': ket_qua[:10]}) # Trả về top 10 gợi ý
 
+
+def api_loc_lop_theo_mon(request):
+    """API trả về danh sách lớp khi chọn môn hoặc ngược lại."""
+    mon_id = request.GET.get('mon_id')
+    lop_id = request.GET.get('lop_id')
+    
+    if mon_id:
+        lops = LopHoc.objects.filter(mon_hoc_id=mon_id).values('id', 'ten_lop')
+        return JsonResponse({'lops': list(lops)})
+    
+    if lop_id:
+        lop = LopHoc.objects.filter(id=lop_id).select_related('mon_hoc').first()
+        if lop and lop.mon_hoc:
+            return JsonResponse({
+                'mon_id': lop.mon_hoc.id,
+                'mon_ten': lop.mon_hoc.ten_mon,
+                'giang_vien_id': lop.giang_vien.id if lop.giang_vien else ''
+            })
+            
+    return JsonResponse({'error': 'Invalid request'}, status=400)
+
 @kiem_tra_quyen_lich
 def them_lich_hang_loat(request):
     """Tạo lịch học lặp theo tuần (chọn thứ, từ ngày → đến ngày)."""
@@ -437,7 +480,7 @@ def them_lich_hang_loat(request):
         
         if not ngay_bd or not ngay_kt or not thu_chon:
             messages.error(request, 'Vui lòng chọn đầy đủ: ngày bắt đầu, ngày kết thúc, và thứ trong tuần.')
-            ds_mon_hoc = LichHoc.objects.values_list('mon_hoc', flat=True).distinct()
+            ds_mon_hoc = MonHoc.objects.order_by('ma_mon', 'ten_mon')
             return render(request, 'LichHoc/ThemMoiHangLoat.html', {'form': form, 'ds_mon_hoc': ds_mon_hoc})
         
         try:
@@ -445,7 +488,7 @@ def them_lich_hang_loat(request):
             end = datetime.strptime(ngay_kt, '%Y-%m-%d').date()
         except ValueError:
             messages.error(request, 'Ngày không hợp lệ.')
-            ds_mon_hoc = LichHoc.objects.values_list('mon_hoc', flat=True).distinct()
+            ds_mon_hoc = MonHoc.objects.order_by('ma_mon', 'ten_mon')
             return render(request, 'LichHoc/ThemMoiHangLoat.html', {'form': form, 'ds_mon_hoc': ds_mon_hoc})
         
         thu_ints = [int(t) for t in thu_chon]  # 0=Mon, 1=Tue,...
@@ -505,8 +548,69 @@ def them_lich_hang_loat(request):
     else:
         form = FormLichHoc()
     
-    ds_mon_hoc = LichHoc.objects.values_list('mon_hoc', flat=True).distinct()
+    ds_mon_hoc = MonHoc.objects.order_by('ma_mon', 'ten_mon')
     return render(request, 'LichHoc/ThemMoiHangLoat.html', {'form': form, 'ds_mon_hoc': ds_mon_hoc})
+
+
+def _doc_csv_upload(csv_file):
+    file_data = csv_file.read()
+    encodings = ['utf-8-sig', 'utf-16', 'windows-1258', 'utf-8']
+    decoded_file = None
+
+    for encoding in encodings:
+        try:
+            decoded_file = file_data.decode(encoding)
+            break
+        except (UnicodeDecodeError, UnicodeError):
+            continue
+
+    if not decoded_file:
+        raise ValueError('Không thể nhận diện bảng mã file CSV. Vui lòng dùng UTF-8.')
+
+    io_string = io.StringIO(decoded_file)
+    try:
+        dialect = csv.Sniffer().sniff(decoded_file[:2000], delimiters=',;')
+        return list(csv.DictReader(io_string, dialect=dialect))
+    except Exception:
+        io_string.seek(0)
+        return list(csv.DictReader(io_string))
+
+
+def _lay_queryset_lop_hoc_phan(request):
+    queryset = LopHoc.objects.select_related('mon_hoc').annotate(
+        so_sv=Count('dang_ky_hoc_phans')
+    ).order_by('ten_lop')
+
+    tu_khoa = request.GET.get('q', '').strip()
+    if tu_khoa:
+        queryset = queryset.filter(
+            Q(ten_lop__icontains=tu_khoa) |
+            Q(mon_hoc__ten_mon__icontains=tu_khoa) |
+            Q(mon_hoc__ma_mon__icontains=tu_khoa)
+        )
+
+    khoa_loc = request.GET.get('khoa', '').strip()
+    if khoa_loc:
+        queryset = queryset.filter(khoa=khoa_loc)
+
+    nien_khoa_loc = request.GET.get('nien_khoa', '').strip()
+    if nien_khoa_loc:
+        queryset = queryset.filter(nien_khoa=nien_khoa_loc)
+
+    context = {
+        'tu_khoa': tu_khoa,
+        'khoa_loc': khoa_loc,
+        'nien_khoa_loc': nien_khoa_loc,
+    }
+    return queryset, context
+
+
+@kiem_tra_quyen_lich
+def lay_tien_do_nhap_lop_csv(request):
+    task_id = request.GET.get('task_id')
+    progress = cache.get(f'lop_import_progress_{task_id}', 0)
+    status = cache.get(f'lop_import_status_{task_id}', 'Đang xử lý...')
+    return JsonResponse({'progress': progress, 'status': status})
 
 
 @kiem_tra_quyen_lich
@@ -600,7 +704,7 @@ def danh_sach_sv_lop(request, pk):
     # Lịch học của lớp này
     lich_hocs = LichHoc.objects.filter(
         lop_hoc=lop, trang_thai='hoat_dong'
-    ).select_related('phong_hoc', 'giang_vien').order_by('ngay_hoc', 'tiet_bat_dau')
+    ).select_related('mon_hoc', 'phong_hoc', 'giang_vien').order_by('ngay_hoc', 'tiet_bat_dau')
     
     return render(request, 'LichHoc/DanhSachSVLop.html', {
         'lop': lop,
@@ -630,7 +734,7 @@ def them_sv_vao_lop(request, pk):
     da_dk_ids = DangKyHocPhan.objects.filter(lop_hoc=lop).values_list('sinh_vien_id', flat=True)
     sv_chua_dk = NguoiDung.objects.filter(
         vai_tro='sinh_vien', is_active=True
-    ).exclude(id__in=da_dk_ids).order_by('ho_ten')
+    ).exclude(id__in=da_dk_ids).select_related('lop_sinh_hoat').order_by('ho_ten')
     
     return render(request, 'LichHoc/ThemSVVaoLop.html', {
         'lop': lop,
@@ -647,6 +751,175 @@ def xoa_sv_khoi_lop(request, pk, sv_id):
         dk.delete()
         messages.success(request, 'Đã xóa sinh viên khỏi lớp học phần.')
     return redirect('danh_sach_sv_lop', pk=lop.pk)
+@kiem_tra_quyen_lich
+@transaction.atomic
+def nhap_lop_hoc_csv(request):
+    """Nhập danh sách lớp học phần từ CSV."""
+    if request.method == 'POST' and request.FILES.get('csv_file'):
+        try:
+            rows = _doc_csv_upload(request.FILES['csv_file'])
+            if not rows:
+                messages.error(request, 'File CSV không có dữ liệu.')
+                return redirect('danh_sach_lop')
+
+            ghi_de = request.POST.get('ghi_de') == 'on'
+            errors = []
+            seen_lops = set()
+            total_rows = len(rows)
+            task_id = request.POST.get('task_id', 'manual')
+
+            for index, row in enumerate(rows, start=2):
+                ten_lop = row.get('ten_lop', '').strip().upper()
+                ma_mon = row.get('ma_mon', '').strip().upper()
+                ten_mon = row.get('ten_mon', '').strip()
+
+                if not ten_lop or not ma_mon or not ten_mon:
+                    errors.append(f'Dòng {index}: Thiếu một trong các cột bắt buộc ten_lop, ma_mon, ten_mon.')
+                    continue
+
+                if ten_lop in seen_lops:
+                    errors.append(f"Dòng {index}: Lớp '{ten_lop}' bị trùng trong file.")
+                seen_lops.add(ten_lop)
+
+                if not ghi_de and LopHoc.objects.filter(ten_lop=ten_lop).exists():
+                    errors.append(f"Dòng {index}: Lớp '{ten_lop}' đã tồn tại.")
+
+            if errors:
+                messages.error(request, 'Lỗi dữ liệu:<br>' + '<br>'.join(errors[:10]))
+                return redirect('danh_sach_lop')
+
+            count_new = 0
+            count_upd = 0
+
+            for index, row in enumerate(rows, start=1):
+                percent = int((index / total_rows) * 100)
+                cache.set(f'lop_import_progress_{task_id}', percent, 300)
+                cache.set(f'lop_import_status_{task_id}', f"Đang xử lý lớp {index}/{total_rows}...", 300)
+
+                ten_lop = row.get('ten_lop', '').strip().upper()
+                ma_mon = row.get('ma_mon', '').strip().upper()
+                ten_mon = row.get('ten_mon', '').strip()
+                khoa = row.get('khoa', '').strip()
+                nien_khoa = row.get('nien_khoa', '').strip()
+                ten_gv = row.get('giang_vien', '').strip()
+
+                mon_hoc, mon_created = MonHoc.objects.get_or_create(
+                    ma_mon=ma_mon,
+                    defaults={'ten_mon': ten_mon},
+                )
+                if not mon_created and mon_hoc.ten_mon != ten_mon:
+                    mon_hoc.ten_mon = ten_mon
+                    mon_hoc.save(update_fields=['ten_mon'])
+
+                lop_hoc, created = LopHoc.objects.get_or_create(ten_lop=ten_lop)
+                lop_hoc.mon_hoc = mon_hoc
+                lop_hoc.khoa = khoa
+                lop_hoc.nien_khoa = nien_khoa
+                
+                # Tìm giảng viên theo tên
+                if ten_gv:
+                    from apps.NguoiDung.models import NguoiDung
+                    gv_obj = NguoiDung.objects.filter(ho_ten__iexact=ten_gv, vai_tro='giang_vien').first()
+                    if gv_obj:
+                        lop_hoc.giang_vien = gv_obj
+                
+                lop_hoc.save()
+
+                if created:
+                    count_new += 1
+                else:
+                    count_upd += 1
+
+            cache.delete(f'lop_import_progress_{task_id}')
+            cache.delete(f'lop_import_status_{task_id}')
+            messages.success(request, f'Đã xử lý xong: Thêm mới {count_new}, Cập nhật {count_upd} lớp học phần.')
+        except Exception as exc:
+            messages.error(request, f'Lỗi hệ thống khi nhập CSV: {exc}')
+
+    return redirect('danh_sach_lop')
+
+
+@kiem_tra_quyen_lich
+def xuat_lop_hoc_csv(request):
+    """Xuất danh sách lớp học phần ra CSV."""
+    queryset, _ = _lay_queryset_lop_hoc_phan(request)
+
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
+    response['Content-Disposition'] = 'attachment; filename="danh_sach_lop_hoc_phan.csv"'
+    response.write('\ufeff')
+
+    writer = csv.writer(response)
+    writer.writerow(['Tên lớp học phần', 'Mã học phần', 'Tên môn học', 'Khoa', 'Niên khóa', 'Số sinh viên'])
+
+    for lop in queryset:
+        writer.writerow([
+            lop.ten_lop,
+            lop.mon_hoc.ma_mon if lop.mon_hoc else '',
+            lop.mon_hoc.ten_mon if lop.mon_hoc else '',
+            lop.khoa,
+            lop.nien_khoa,
+            lop.so_sv,
+        ])
+
+    return response
+
+
+@kiem_tra_quyen_lich
+def danh_sach_lop(request):
+    """Danh sÃ¡ch lá»›p há»c pháº§n."""
+    queryset, filter_context = _lay_queryset_lop_hoc_phan(request)
+
+    ds_khoa = LopHoc.objects.exclude(khoa='').values_list('khoa', flat=True).distinct().order_by('khoa')
+    ds_nien_khoa = LopHoc.objects.exclude(nien_khoa='').values_list('nien_khoa', flat=True).distinct().order_by('nien_khoa')
+    thong_ke = {
+        'tong_lop': queryset.count(),
+        'tong_mon': queryset.exclude(mon_hoc__isnull=True).values('mon_hoc_id').distinct().count(),
+        'tong_sinh_vien': DangKyHocPhan.objects.filter(lop_hoc_id__in=queryset.values('id')).count(),
+        'tong_khoa': queryset.exclude(khoa='').values('khoa').distinct().count(),
+    }
+
+    paginator = Paginator(queryset, 15)
+    trang = request.GET.get('page')
+    lop_hocs = paginator.get_page(trang)
+
+    context = {
+        'lop_hocs': lop_hocs,
+        'ds_khoa': ds_khoa,
+        'ds_nien_khoa': ds_nien_khoa,
+        'thong_ke': thong_ke,
+        'mau_csv': 'ten_lop,ma_mon,ten_mon,khoa,nien_khoa',
+    }
+    context.update(filter_context)
+    return render(request, 'LichHoc/DanhSachLop.html', context)
+
+
+@kiem_tra_quyen_lich
+def them_lop(request):
+    """ThÃªm lá»›p há»c pháº§n má»›i."""
+    if request.method == 'POST':
+        form = FormLopHoc(request.POST)
+        if form.is_valid():
+            lop = form.save()
+            messages.success(request, f'ÄÃ£ thÃªm lá»›p {lop.ten_lop} thÃ nh cÃ´ng.')
+            return redirect('danh_sach_lop')
+    else:
+        form = FormLopHoc()
+    return render(request, 'LichHoc/ThemMoiLop.html', {'form': form})
+
+
+@kiem_tra_quyen_lich
+def chinh_sua_lop(request, pk):
+    """Chá»‰nh sá»­a lá»›p há»c pháº§n."""
+    lop = get_object_or_404(LopHoc.objects.select_related('mon_hoc'), pk=pk)
+    if request.method == 'POST':
+        form = FormLopHoc(request.POST, instance=lop)
+        if form.is_valid():
+            lop = form.save()
+            messages.success(request, f'ÄÃ£ cáº­p nháº­t lá»›p {lop.ten_lop}.')
+            return redirect('danh_sach_lop')
+    else:
+        form = FormLopHoc(instance=lop)
+    return render(request, 'LichHoc/ChinhSuaLop.html', {'form': form, 'lop': lop})
 
 
 @login_required
@@ -701,7 +974,7 @@ def thoi_khoa_bieu_tuan(request):
         filters['giang_vien'] = request.user
 
     lich_hocs = LichHoc.objects.filter(**filters).select_related(
-        'phong_hoc', 'giang_vien', 'lop_hoc'
+        'mon_hoc', 'phong_hoc', 'giang_vien', 'lop_hoc'
     )
 
     ds_tiet = list(range(1, 15))
@@ -752,6 +1025,25 @@ def thoi_khoa_bieu_tuan(request):
 
         # Get schedules for selected day
         day_qs = lich_hocs.filter(ngay_hoc=selected_day).order_by('tiet_bat_dau')
+
+        # SEARCH & FILTERS
+        search_mon = request.GET.get('mon', '')
+        search_gv = request.GET.get('gv', '')
+        search_phong = request.GET.get('phong', '')
+        search_lop = request.GET.get('lop', '')
+        
+        if search_mon:
+            day_qs = day_qs.filter(
+                Q(mon_hoc__ten_mon__icontains=search_mon) |
+                Q(mon_hoc__ma_mon__icontains=search_mon)
+            )
+        if search_gv:
+            day_qs = day_qs.filter(giang_vien__ho_ten__icontains=search_gv)
+        if search_phong:
+            day_qs = day_qs.filter(phong_hoc__ma_phong__icontains=search_phong)
+        if search_lop:
+            day_qs = day_qs.filter(Q(lop_hoc__ten_lop__icontains=search_lop) | Q(ma_lop__icontains=search_lop))
+
         day_active = day_qs.filter(trang_thai='hoat_dong')
         day_cancelled = day_qs.filter(trang_thai='da_huy')
 
@@ -809,6 +1101,10 @@ def thoi_khoa_bieu_tuan(request):
         'list_mode': locals().get('list_mode', 'all'),
         'day_stats': locals().get('day_stats', {}),
         'cho_duyet': locals().get('cho_duyet', 0),
+        'search_mon': locals().get('search_mon', ''),
+        'search_gv': locals().get('search_gv', ''),
+        'search_phong': locals().get('search_phong', ''),
+        'search_lop': locals().get('search_lop', ''),
     }
     return render(request, template_name, context)
 
@@ -904,14 +1200,14 @@ def danh_sach_yeu_cau(request):
     # 2. Khởi tạo queryset theo vai trò
     if request.user.la_quan_tri or request.user.la_giao_vu:
         queryset = YeuCauDoiLich.objects.select_related(
-            'lich_hoc', 'lich_hoc__phong_hoc', 'lich_hoc__giang_vien',
+            'lich_hoc', 'lich_hoc__mon_hoc', 'lich_hoc__phong_hoc', 'lich_hoc__giang_vien',
             'lich_hoc__lop_hoc', 'nguoi_yeu_cau', 'phong_moi', 'nguoi_duyet'
         ).all()
     elif request.user.la_giang_vien:
         queryset = YeuCauDoiLich.objects.filter(
             nguoi_yeu_cau=request.user
         ).select_related(
-            'lich_hoc', 'lich_hoc__phong_hoc', 'nguoi_duyet', 'phong_moi'
+            'lich_hoc', 'lich_hoc__mon_hoc', 'lich_hoc__phong_hoc', 'nguoi_duyet', 'phong_moi'
         )
     else:
         messages.error(request, 'Bạn không có quyền truy cập.')
@@ -921,7 +1217,8 @@ def danh_sach_yeu_cau(request):
     tu_khoa = request.GET.get('q', '')
     if tu_khoa:
         queryset = queryset.filter(
-            Q(lich_hoc__mon_hoc__icontains=tu_khoa) | 
+            Q(lich_hoc__mon_hoc__ten_mon__icontains=tu_khoa) |
+            Q(lich_hoc__mon_hoc__ma_mon__icontains=tu_khoa) |
             Q(nguoi_yeu_cau__ho_ten__icontains=tu_khoa)
         )
 
@@ -1020,7 +1317,7 @@ def chinh_sua_yeu_cau(request, pk):
 def duyet_yeu_cau(request, pk):
     """Admin/GV duyệt hoặc từ chối yêu cầu đổi lịch."""
     yc = get_object_or_404(YeuCauDoiLich.objects.select_related(
-        'lich_hoc', 'lich_hoc__phong_hoc', 'lich_hoc__giang_vien',
+        'lich_hoc', 'lich_hoc__mon_hoc', 'lich_hoc__phong_hoc', 'lich_hoc__giang_vien',
         'lich_hoc__lop_hoc', 'nguoi_yeu_cau', 'phong_moi',
     ), pk=pk)
 
@@ -1119,7 +1416,7 @@ def lich_su_thay_doi(request):
     }
 
     queryset = queryset.select_related(
-        'lich_hoc', 'lich_hoc__phong_hoc', 'lich_hoc__giang_vien',
+        'lich_hoc', 'lich_hoc__mon_hoc', 'lich_hoc__phong_hoc', 'lich_hoc__giang_vien',
         'nguoi_yeu_cau', 'phong_moi', 'nguoi_duyet'
     )
 

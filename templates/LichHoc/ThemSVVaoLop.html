@@ -1,76 +1,158 @@
 {% extends 'base.html' %}
 {% block title %}Thêm SV vào lớp {{ lop.ten_lop }} - OptiDUT{% endblock %}
+
 {% block extra_css %}
 <style>
-    .sv-select-list { max-height: 500px; overflow-y: auto; border: 1px solid var(--color-border); border-radius: 4px; }
-    .sv-item { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--color-border); transition: background 0.1s; }
-    .sv-item:hover { background: rgba(0,51,102,0.02); }
-    .sv-item:last-child { border-bottom: none; }
-    .sv-item input { accent-color: var(--color-primary); }
-    .sv-item .sv-name { font-weight: 500; }
-    .sv-item .sv-mssv { font-size: 13px; color: var(--color-text-secondary); }
-    .select-actions { display: flex; gap: 12px; margin: 16px 0; }
-    .search-box { margin-bottom: 12px; }
+    .page-content { max-width: 100% !important; padding: 20px 40px !important; }
+    
+    .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+    .page-title { font-size: 20px; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 10px; margin: 0; }
+
+    .selection-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+
+    .toolbar-box { padding: 16px 20px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 16px; }
+    
+    .search-wrapper { position: relative; width: 100%; }
+    .search-wrapper i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 18px; }
+    .search-input { width: 100%; height: 42px; padding: 0 14px 0 44px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 14px; transition: all 0.2s; }
+    .search-input:focus { border-color: #003366; outline: none; box-shadow: 0 0 0 3px rgba(0, 51, 102, 0.1); }
+
+    .action-row { display: flex; align-items: center; justify-content: space-between; }
+    .bulk-actions { display: flex; gap: 8px; }
+    .status-badge { font-size: 12px; font-weight: 700; color: #64748b; background: #e2e8f0; padding: 4px 10px; border-radius: 99px; }
+
+    .table-container { max-height: 600px; overflow-y: auto; }
+    .data-table { width: 100%; border-collapse: collapse; text-align: left; }
+    .data-table thead { position: sticky; top: 0; z-index: 10; background: #003366; }
+    .data-table th { padding: 12px 20px; font-size: 12px; font-weight: 700; color: #ffffff; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #00264d; }
+    .data-table td { padding: 14px 20px; font-size: 14px; color: #1e293b; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+    .data-table tr:hover { background: #f8fafc; }
+    
+    .check-cell { width: 40px; text-align: center; }
+    .check-input { width: 18px; height: 18px; cursor: pointer; accent-color: #003366; }
+
+    .mssv-tag { font-family: monospace; font-weight: 700; color: #003366; background: #f0f7ff; padding: 2px 6px; border-radius: 4px; border: 1px solid #d0e7ff; }
+    .sub-info { font-size: 12px; color: #64748b; margin-top: 2px; }
+
+    .form-footer { padding: 20px; background: #fff; border-top: 1px solid #e2e8f0; display: flex; gap: 12px; justify-content: flex-end; }
+    
+    .btn { height: 38px; border-radius: 6px; padding: 0 20px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; border: 1px solid transparent; transition: all 0.2s; text-decoration: none; }
+    .btn-primary { background: #003366; color: white; }
+    .btn-primary:hover { background: #00264d; }
+    .btn-outline { background: white; border-color: #e2e8f0; color: #64748b; }
+    .btn-outline:hover { background: #f8fafc; color: #1e293b; border-color: #cbd5e1; }
+    .btn-sm { height: 32px; padding: 0 12px; font-size: 12px; }
+
+    .empty-state { padding: 60px; text-align: center; color: #94a3b8; }
+    .empty-state i { font-size: 48px; margin-bottom: 16px; display: block; opacity: 0.3; }
 </style>
 {% endblock %}
+
 {% block content %}
-<div class="page-header">
-    <h1 class="page-title">Thêm sinh viên vào lớp: {{ lop.ten_lop }}</h1>
-</div>
-
-<form method="post">
-    {% csrf_token %}
-    
-    <div class="search-box">
-        <input type="text" id="searchSV" class="form-input" placeholder="Tìm theo tên hoặc MSSV..." onkeyup="filterSV()">
+<div class="add-student-container">
+    <div class="page-header">
+        <h1 class="page-title"><i class='bx bx-user-plus'></i> Thêm sinh viên vào lớp: {{ lop.ten_lop }}</h1>
+        <a href="{% url 'danh_sach_sv_lop' lop.pk %}" class="btn btn-outline">
+            <i class='bx bx-arrow-back'></i> Quay lại
+        </a>
     </div>
 
-    <div class="select-actions">
-        <button type="button" class="btn btn-outline btn-sm" onclick="selectAll()">Chọn tất cả</button>
-        <button type="button" class="btn btn-outline btn-sm" onclick="deselectAll()">Bỏ chọn tất cả</button>
-        <span style="color:var(--color-text-secondary); font-size: 13px; margin-left: auto;" id="countSelected">Đã chọn: 0</span>
-    </div>
+    <form method="post" class="selection-card">
+        {% csrf_token %}
+        
+        <div class="toolbar-box">
+            <div class="search-wrapper">
+                <i class='bx bx-search'></i>
+                <input type="text" id="searchSV" class="search-input" placeholder="Tìm theo tên, MSSV, lớp hoặc khoa..." onkeyup="filterSV()">
+            </div>
 
-    <div class="sv-select-list" id="svList">
-        {% for sv in sv_chua_dk %}
-        <label class="sv-item" data-name="{{ sv.ho_ten|lower }}" data-mssv="{{ sv.ma_so|lower }}">
-            <input type="checkbox" name="sinh_vien_ids" value="{{ sv.pk }}" onchange="updateCount()">
-            <span class="sv-name">{{ sv.ho_ten }}</span>
-            <span class="sv-mssv">{{ sv.ma_so|default:"—" }}</span>
-        </label>
-        {% empty %}
-        <div style="padding: 20px; text-align: center; color: var(--color-text-secondary);">
-            Không còn sinh viên nào để thêm.
+            <div class="action-row">
+                <div class="bulk-actions">
+                    <button type="button" class="btn btn-outline btn-sm" onclick="selectAll()">Chọn tất cả</button>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="deselectAll()">Bỏ chọn tất cả</button>
+                </div>
+                <span class="status-badge" id="countSelected">Đã chọn: 0 sinh viên</span>
+            </div>
         </div>
-        {% endfor %}
-    </div>
 
-    <div style="margin-top: 20px; display: flex; gap: 12px;">
-        <a href="{% url 'danh_sach_sv_lop' lop.pk %}" class="btn btn-outline">← Quay lại</a>
-        <button type="submit" class="btn btn-primary"><i class='bx bx-plus'></i> Thêm sinh viên đã chọn</button>
-    </div>
-</form>
+        <div class="table-container">
+            <table class="data-table" id="svTable">
+                <thead>
+                    <tr>
+                        <th class="check-cell"></th>
+                        <th>Sinh viên</th>
+                        <th>Lớp sinh hoạt</th>
+                        <th>Khoa quản lý</th>
+                        <th>Niên khóa</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sv in sv_chua_dk %}
+                    <tr class="sv-row" 
+                        data-search="{{ sv.ho_ten|lower }} {{ sv.ma_so|lower }} {{ sv.lop_sinh_hoat.ten_lop|lower }} {{ sv.lop_sinh_hoat.khoa_quan_ly|lower }}">
+                        <td class="check-cell">
+                            <input type="checkbox" name="sinh_vien_ids" value="{{ sv.pk }}" class="check-input" onchange="updateCount()">
+                        </td>
+                        <td>
+                            <div style="font-weight: 600; color: #1e293b;">{{ sv.ho_ten }}</div>
+                            <span class="mssv-tag">{{ sv.ma_so|default:"—" }}</span>
+                        </td>
+                        <td>{{ sv.lop_sinh_hoat.ten_lop|default:"—" }}</td>
+                        <td>{{ sv.lop_sinh_hoat.khoa_quan_ly|default:"—" }}</td>
+                        <td>
+                            {% if sv.lop_sinh_hoat.khoa_hoc %}
+                            <span style="color: #64748b;">Khóa {{ sv.lop_sinh_hoat.khoa_hoc }}</span>
+                            {% else %}
+                            —
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5">
+                            <div class="empty-state">
+                                <i class='bx bx-user-x'></i>
+                                <p>Không còn sinh viên nào khả dụng để thêm vào lớp này.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="form-footer">
+            <button type="submit" class="btn btn-primary">
+                <i class='bx bx-plus-circle'></i> Thêm sinh viên đã chọn
+            </button>
+        </div>
+    </form>
+</div>
 
 <script>
 function filterSV() {
-    const q = document.getElementById('searchSV').value.toLowerCase();
-    document.querySelectorAll('.sv-item').forEach(item => {
-        const name = item.dataset.name || '';
-        const mssv = item.dataset.mssv || '';
-        item.style.display = (name.includes(q) || mssv.includes(q)) ? '' : 'none';
+    const q = document.getElementById('searchSV').value.toLowerCase().trim();
+    const rows = document.querySelectorAll('.sv-row');
+    
+    rows.forEach(row => {
+        const text = row.dataset.search;
+        row.style.display = text.includes(q) ? '' : 'none';
     });
 }
+
 function selectAll() {
-    document.querySelectorAll('.sv-item:not([style*="display: none"]) input').forEach(cb => cb.checked = true);
+    document.querySelectorAll('.sv-row:not([style*="display: none"]) .check-input').forEach(cb => cb.checked = true);
     updateCount();
 }
+
 function deselectAll() {
-    document.querySelectorAll('.sv-item input').forEach(cb => cb.checked = false);
+    document.querySelectorAll('.check-input').forEach(cb => cb.checked = false);
     updateCount();
 }
+
 function updateCount() {
-    const count = document.querySelectorAll('.sv-item input:checked').length;
-    document.getElementById('countSelected').textContent = 'Đã chọn: ' + count;
+    const count = document.querySelectorAll('.check-input:checked').length;
+    document.getElementById('countSelected').textContent = 'Đã chọn: ' + count + ' sinh viên';
 }
 </script>
 {% endblock %}

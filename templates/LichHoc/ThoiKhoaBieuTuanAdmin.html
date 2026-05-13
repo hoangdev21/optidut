@@ -4,76 +4,136 @@
 {% block extra_css %}
 <style>
     .admin-tkb { max-width: 1400px; margin: 0 auto; }
-    .week-nav { display: flex; align-items: center; justify-content: center; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
+    .week-nav { display: flex; align-items: center; justify-content: center; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; background: #fff; padding: 15px; border: 1px solid var(--color-border); border-radius: 4px; }
     .week-nav .btn { padding: 8px 16px; font-size: 13px; }
     .week-nav .week-label { font-size: 16px; font-weight: 600; color: var(--color-text); min-width: 260px; text-align: center; }
+    .week-nav .week-label i { margin-right: 8px; color: var(--color-primary); }
     .week-nav .week-label small { display: block; font-size: 13px; font-weight: 400; color: var(--color-text-secondary); }
 
-    /* Day tabs */
-    .day-tabs { display: flex; justify-content: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
-    .day-tab { padding: 10px 14px; border: 1px solid var(--color-border); border-radius: 2px; text-decoration: none; color: var(--color-text); font-size: 13px; font-weight: 500; text-align: center; min-width: 110px; background: #fff; }
-    .day-tab:hover { border-color: var(--color-primary); }
-    .day-tab.active { border-color: var(--color-primary); color: var(--color-primary); font-weight: 600; }
-    .day-tab.today { border-color: var(--color-accent); }
+    /* Day tabs - Reverting to old design */
+    .day-tabs { display: flex; justify-content: center; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+    .day-tab { padding: 10px 14px; border: 1px solid var(--color-border); border-radius: 2px; text-decoration: none; color: var(--color-text); font-size: 13px; font-weight: 500; text-align: center; min-width: 110px; background: #fff; transition: all 0.2s; }
+    .day-tab:hover { border-color: var(--color-primary); transform: translateY(-2px); }
+    .day-tab.active { border-color: var(--color-primary); color: var(--color-primary); font-weight: 600; background: #F0F6FF; }
+    .day-tab.today { border-color: var(--color-accent); border-width: 2px; }
     .day-tab .tab-date { font-size: 11px; color: var(--color-text-secondary); }
-    .day-tab .tab-count { font-size: 11px; color: var(--color-text-secondary); margin-top: 2px; display: inline-block; }
+    .day-tab .tab-count { font-size: 10px; margin-top: 4px; }
 
-    /* Stats */
-    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
-    .stat-card { background: #fff; border: 1px solid var(--color-border); border-radius: 2px; padding: 16px 12px; text-align: center; }
-    .stat-card.is-active { border-color: var(--color-primary); }
-    .stat-link { display: block; color: inherit; text-decoration: none; }
-    .stat-icon { width: 34px; height: 34px; object-fit: contain; display: block; margin: 0 auto 8px; }
-    .stat-value { font-size: 20px; font-weight: 700; color: var(--color-primary); }
-    .stat-label { font-size: 12px; color: var(--color-text-secondary); }
+    /* Stats - Compact Horizontal Layout */
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 24px; }
+    .stat-card { 
+        background: #fff; 
+        border: 1px solid var(--color-border); 
+        padding: 12px 16px; 
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        transition: all 0.2s;
+        border-radius: 4px;
+        text-decoration: none;
+        color: inherit;
+    }
+    .stat-card:hover { border-color: var(--color-primary); box-shadow: 0 4px 10px rgba(0,0,0,0.04); }
+    .stat-card.is-active { border: 2px solid var(--color-primary); background: #F8FAFC; }
+    .stat-icon { width: 32px; height: 32px; object-fit: contain; flex-shrink: 0; }
+    .stat-info { display: flex; flex-direction: column; line-height: 1.2; }
+    .stat-value { font-size: 20px; font-weight: 800; color: var(--color-primary); }
+    .stat-label { font-size: 12px; color: var(--color-text-secondary); font-weight: 600; white-space: nowrap; }
+
+    /* Filter Bar */
+    .filter-section { 
+        background: #F8FAFC; 
+        border: 1px solid var(--color-border); 
+        padding: 20px; 
+        margin-bottom: 24px; 
+        border-radius: 4px;
+    }
+    .filter-grid { 
+        display: grid; 
+        grid-template-columns: 2fr 1.5fr 1fr 1fr auto; 
+        gap: 15px; 
+        align-items: flex-end; 
+    }
+    .filter-group { display: flex; flex-direction: column; gap: 6px; }
+    .filter-group label { font-size: 11px; font-weight: 700; color: var(--color-primary); text-transform: uppercase; }
+    .filter-input { 
+        height: 40px; 
+        padding: 0 12px; 
+        border: 1px solid var(--color-border); 
+        border-radius: 4px; 
+        font-size: 14px; 
+        width: 100%;
+        transition: border-color 0.2s;
+    }
+    .filter-input:focus { border-color: var(--color-primary); outline: none; }
+    .btn-filter { height: 40px; padding: 0 20px; display: flex; align-items: center; gap: 8px; font-weight: 600; }
 
     /* Table list */
-    .table-shell { border: 1px solid var(--color-text); border-radius: 0; background: var(--color-white); overflow-x: auto; }
-    .basic-table { width: 100%; border-collapse: collapse; min-width: 980px; font-size: 13px; }
-    .basic-table th,
-    .basic-table td { border: 1px solid var(--color-text); padding: 10px 12px; }
-    .basic-table thead { background: var(--color-primary); color: var(--color-white); }
-    .basic-table th { background: var(--color-primary); color: var(--color-white); text-transform: uppercase; letter-spacing: 0.4px; font-size: 12px; }
-    .basic-table tbody tr:nth-child(even) { background: #F0F6FF; }
-    .basic-table tbody tr:hover { background: #E6F0FF; }
-    .checkbox-cell { width: 42px; text-align: center; }
-    .checkbox-input { width: 16px; height: 16px; accent-color: var(--color-primary); }
-    .text-center { text-align: center; }
-    .status-text { font-size: 12px; font-weight: 600; }
-    .status-active { color: var(--color-success); }
-    .status-cancel { color: var(--color-danger); }
+    .table-shell { 
+        background: var(--color-white); 
+        border: 1px solid var(--color-border);
+        border-radius: 4px; 
+        overflow: hidden; 
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .basic-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .basic-table th { 
+        background: #003366; 
+        color: #fff; 
+        font-weight: 600; 
+        text-align: left; 
+        padding: 14px 16px; 
+        font-size: 12px; 
+        text-transform: uppercase;
+        border-right: 1px solid rgba(255,255,255,0.1);
+    }
+    .basic-table td { 
+        padding: 14px 16px; 
+        border-bottom: 1px solid #F1F5F9; 
+        color: var(--color-text);
+        border-right: 1px solid #F1F5F9;
+    }
+    .basic-table td:last-child, .basic-table th:last-child { border-right: none; }
+    .basic-table tbody tr:nth-child(even) { background: #F8FAFC; }
+    .basic-table tbody tr:hover { background: #F1F5F9; }
+    
+    .btn-action { padding: 5px 12px; font-size: 12px; font-weight: 600; min-width: 60px; }
+    .checkbox-cell { width: 50px; text-align: center; }
+    .checkbox-input { width: 18px; height: 18px; accent-color: var(--color-primary); cursor: pointer; }
 
+    @media (max-width: 1200px) {
+        .filter-grid { grid-template-columns: 1fr 1fr; }
+        .filter-grid .btn-filter { grid-column: span 2; width: 100%; justify-content: center; }
+    }
     @media (max-width: 992px) {
         .stats-grid { grid-template-columns: repeat(2, 1fr); }
     }
     @media (max-width: 576px) {
         .day-tab { min-width: 100%; }
-        .stats-grid { grid-template-columns: 1fr; }
-        .week-nav .btn { width: 100%; justify-content: center; }
     }
 </style>
 {% endblock %}
 {% block content %}
 <div class="admin-tkb">
-    <div class="page-header" style="margin-bottom:12px;">
+    <div class="page-header" style="margin-bottom:24px;">
         <h1 class="page-title"><i class='bx bx-calendar-edit'></i> Quản lý Thời khóa biểu</h1>
-        <div style="display:flex;gap:8px;">
+        <div style="display:flex;gap:10px;">
             {% if user.la_giao_vu %}
             <a href="{% url 'danh_sach_yeu_cau' %}" class="btn btn-outline"><i class='bx bx-git-pull-request'></i> Yêu cầu đổi lịch {% if cho_duyet %}<span class="badge badge-accent">{{ cho_duyet }}</span>{% endif %}</a>
-            <a href="{% url 'them_lich_hang_loat' %}" class="btn btn-accent"><i class='bx bx-calendar-plus'></i> Xếp lịch hàng loạt</a>
+            <a href="{% url 'them_lich_hang_loat' %}" class="btn btn-primary"><i class='bx bx-spreadsheet'></i> Xếp lịch hàng loạt</a>
             {% endif %}
         </div>
     </div>
 
     <!-- Week navigation -->
     <div class="week-nav">
-        <a href="?ngay={{ tuan_truoc|date:'Y-m-d' }}&view={{ list_mode }}" class="btn btn-outline">◀ Tuần trước</a>
+        <a href="?ngay={{ tuan_truoc|date:'Y-m-d' }}&view={{ list_mode }}" class="btn btn-outline btn-sm">◀ Tuần trước</a>
         <div class="week-label">
-            {{ dau_tuan|date:"d/m" }} — {{ cuoi_tuan|date:"d/m/Y" }}
+            <i class='bx bx-calendar-alt'></i> {{ dau_tuan|date:"d/m" }} — {{ cuoi_tuan|date:"d/m/Y" }}
             <small>{% if hom_nay >= dau_tuan and hom_nay <= cuoi_tuan %}Tuần hiện tại{% endif %}</small>
         </div>
-        <a href="?ngay={{ tuan_sau|date:'Y-m-d' }}&view={{ list_mode }}" class="btn btn-outline">Tuần sau ▶</a>
-        <a href="{% url 'thoi_khoa_bieu_tuan' %}?view={{ list_mode }}" class="btn btn-primary" style="font-size:12px;">↩ Tuần này</a>
+        <a href="?ngay={{ tuan_sau|date:'Y-m-d' }}&view={{ list_mode }}" class="btn btn-outline btn-sm">Tuần sau ▶</a>
+        <a href="{% url 'thoi_khoa_bieu_tuan' %}?view={{ list_mode }}" class="btn btn-primary btn-sm">↩ Tuần này</a>
     </div>
 
     <!-- Day tabs -->
@@ -81,45 +141,85 @@
         {% for d in ds_ngay %}
         <a href="?ngay={{ dau_tuan|date:'Y-m-d' }}&day={{ d.ngay|date:'Y-m-d' }}&view={{ list_mode }}"
            class="day-tab {% if selected_day == d.ngay %}active{% endif %} {% if d.ngay == hom_nay %}today{% endif %}">
-            {{ d.ten_thu }}
+            <div style="font-weight: 700; margin-bottom: 2px;">{{ d.ten_thu }}</div>
             <div class="tab-date">{{ d.ngay|date:"d/m" }}</div>
-            {% if d.count %}<span class="tab-count">{{ d.count }} lịch</span>{% endif %}
+            {% if d.count %}<span class="badge badge-primary tab-count">{{ d.count }} lịch</span>{% endif %}
         </a>
         {% endfor %}
     </div>
 
     <!-- Stats for selected day -->
     <div class="stats-grid">
-        <a class="stat-card stat-link {% if list_mode == 'all' %}is-active{% endif %}" href="?ngay={{ dau_tuan|date:'Y-m-d' }}&day={{ selected_day|date:'Y-m-d' }}&view=all">
+        <a class="stat-card {% if list_mode == 'all' %}is-active{% endif %}" href="?ngay={{ dau_tuan|date:'Y-m-d' }}&day={{ selected_day|date:'Y-m-d' }}&view=all">
             <img src="{% static 'img/stats-total.png' %}" alt="Tong lich" class="stat-icon">
-            <div class="stat-value">{{ day_stats.total }}</div>
-            <div class="stat-label">Tổng lịch</div>
+            <div class="stat-info">
+                <div class="stat-value">{{ day_stats.total }}</div>
+                <div class="stat-label">Tổng lịch</div>
+            </div>
         </a>
-        <a class="stat-card stat-link {% if list_mode == 'rooms' %}is-active{% endif %}" href="?ngay={{ dau_tuan|date:'Y-m-d' }}&day={{ selected_day|date:'Y-m-d' }}&view=rooms">
+        <a class="stat-card {% if list_mode == 'rooms' %}is-active{% endif %}" href="?ngay={{ dau_tuan|date:'Y-m-d' }}&day={{ selected_day|date:'Y-m-d' }}&view=rooms">
             <img src="{% static 'img/stats-rooms.png' %}" alt="Phong su dung" class="stat-icon">
-            <div class="stat-value">{{ day_stats.rooms }}</div>
-            <div class="stat-label">Phòng sử dụng</div>
+            <div class="stat-info">
+                <div class="stat-value">{{ day_stats.rooms }}</div>
+                <div class="stat-label">Phòng sử dụng</div>
+            </div>
         </a>
-        <a class="stat-card stat-link {% if list_mode == 'teachers' %}is-active{% endif %}" href="?ngay={{ dau_tuan|date:'Y-m-d' }}&day={{ selected_day|date:'Y-m-d' }}&view=teachers">
+        <a class="stat-card {% if list_mode == 'teachers' %}is-active{% endif %}" href="?ngay={{ dau_tuan|date:'Y-m-d' }}&day={{ selected_day|date:'Y-m-d' }}&view=teachers">
             <img src="{% static 'img/stats-teachers.png' %}" alt="Giang vien" class="stat-icon">
-            <div class="stat-value">{{ day_stats.gvs }}</div>
-            <div class="stat-label">Giảng viên</div>
+            <div class="stat-info">
+                <div class="stat-value">{{ day_stats.gvs }}</div>
+                <div class="stat-label">Giảng viên</div>
+            </div>
         </a>
-        <a class="stat-card stat-link {% if list_mode == 'cancelled' %}is-active{% endif %}" href="?ngay={{ dau_tuan|date:'Y-m-d' }}&day={{ selected_day|date:'Y-m-d' }}&view=cancelled">
+        <a class="stat-card {% if list_mode == 'cancelled' %}is-active{% endif %}" href="?ngay={{ dau_tuan|date:'Y-m-d' }}&day={{ selected_day|date:'Y-m-d' }}&view=cancelled">
             <img src="{% static 'img/stats-cancel.png' %}" alt="Da huy" class="stat-icon">
-            <div class="stat-value">{{ day_stats.cancelled }}</div>
-            <div class="stat-label">Đã hủy</div>
+            <div class="stat-info">
+                <div class="stat-value">{{ day_stats.cancelled }}</div>
+                <div class="stat-label">Đã hủy</div>
+            </div>
         </a>
     </div>
 
-    <!-- Schedule list for selected day -->
+    <!-- Filter Bar -->
+    <div class="filter-section">
+        <form method="GET" class="filter-grid">
+            <input type="hidden" name="ngay" value="{{ dau_tuan|date:'Y-m-d' }}">
+            <input type="hidden" name="day" value="{{ selected_day|date:'Y-m-d' }}">
+            <input type="hidden" name="view" value="{{ list_mode }}">
+            
+            <div class="filter-group">
+                <label>Môn học</label>
+                <input type="text" name="mon" value="{{ search_mon|default:'' }}" class="filter-input" placeholder="Tìm tên môn học...">
+            </div>
+            <div class="filter-group">
+                <label>Giảng viên</label>
+                <input type="text" name="gv" value="{{ search_gv|default:'' }}" class="filter-input" placeholder="Tìm tên giảng viên...">
+            </div>
+            <div class="filter-group">
+                <label>Phòng</label>
+                <input type="text" name="phong" value="{{ search_phong|default:'' }}" class="filter-input" placeholder="Mã phòng...">
+            </div>
+            <div class="filter-group">
+                <label>Lớp</label>
+                <input type="text" name="lop" value="{{ search_lop|default:'' }}" class="filter-input" placeholder="Tên lớp...">
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <button type="submit" class="btn btn-primary btn-filter"><i class='bx bx-search'></i> Lọc</button>
+                {% if search_mon or search_gv or search_phong or search_lop %}
+                <a href="?ngay={{ dau_tuan|date:'Y-m-d' }}&day={{ selected_day|date:'Y-m-d' }}&view={{ list_mode }}" class="btn btn-outline btn-filter"><i class='bx bx-x'></i> Xóa</a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <!-- Table -->
     <div class="table-shell">
         <table class="basic-table">
             {% if list_mode == 'rooms' %}
             <thead>
                 <tr>
-                    <th class="checkbox-cell"><input type="checkbox" class="checkbox-input" aria-label="Chọn tất cả"></th>
-                    <th class="text-center">STT</th>
+                    <th class="checkbox-cell"><input type="checkbox" class="checkbox-input"></th>
+                    <th class="text-center" style="width: 80px;">STT</th>
                     <th class="text-center">Phòng</th>
                     <th class="text-center">Số lịch</th>
                 </tr>
@@ -127,22 +227,20 @@
             <tbody>
                 {% for row in page_obj %}
                 <tr>
-                    <td class="checkbox-cell"><input type="checkbox" class="checkbox-input" aria-label="Chọn dòng"></td>
+                    <td class="checkbox-cell"><input type="checkbox" class="checkbox-input"></td>
                     <td class="text-center">{{ page_obj.start_index|add:forloop.counter0 }}</td>
-                    <td class="text-center">{{ row.ma_phong }}</td>
+                    <td class="text-center" style="font-weight: 700; color: var(--color-primary);">{{ row.ma_phong }}</td>
                     <td class="text-center">{{ row.so_lich }}</td>
                 </tr>
                 {% empty %}
-                <tr>
-                    <td colspan="4" class="text-center" style="padding: 24px;">Không có phòng sử dụng.</td>
-                </tr>
+                <tr><td colspan="4" class="empty-state">Không có phòng sử dụng.</td></tr>
                 {% endfor %}
             </tbody>
             {% elif list_mode == 'teachers' %}
             <thead>
                 <tr>
-                    <th class="checkbox-cell"><input type="checkbox" class="checkbox-input" aria-label="Chọn tất cả"></th>
-                    <th class="text-center">STT</th>
+                    <th class="checkbox-cell"><input type="checkbox" class="checkbox-input"></th>
+                    <th class="text-center" style="width: 80px;">STT</th>
                     <th>Giảng viên</th>
                     <th class="text-center">Số lịch</th>
                 </tr>
@@ -150,22 +248,20 @@
             <tbody>
                 {% for row in page_obj %}
                 <tr>
-                    <td class="checkbox-cell"><input type="checkbox" class="checkbox-input" aria-label="Chọn dòng"></td>
+                    <td class="checkbox-cell"><input type="checkbox" class="checkbox-input"></td>
                     <td class="text-center">{{ page_obj.start_index|add:forloop.counter0 }}</td>
-                    <td>{{ row.ho_ten }}</td>
+                    <td style="font-weight: 600;">{{ row.ho_ten }}</td>
                     <td class="text-center">{{ row.so_lich }}</td>
                 </tr>
                 {% empty %}
-                <tr>
-                    <td colspan="4" class="text-center" style="padding: 24px;">Không có giảng viên.</td>
-                </tr>
+                <tr><td colspan="4" class="empty-state">Không có giảng viên.</td></tr>
                 {% endfor %}
             </tbody>
             {% else %}
             <thead>
                 <tr>
-                    <th class="checkbox-cell"><input type="checkbox" class="checkbox-input" aria-label="Chọn tất cả"></th>
-                    <th class="text-center">STT</th>
+                    <th class="checkbox-cell"><input type="checkbox" class="checkbox-input"></th>
+                    <th class="text-center" style="width: 60px;">STT</th>
                     <th>Tên môn học</th>
                     <th>Giảng viên</th>
                     <th>Lớp</th>
@@ -173,40 +269,43 @@
                     <th class="text-center">Tiết</th>
                     <th class="text-center">Trạng thái</th>
                     {% if user.la_giao_vu %}
-                    <th class="text-center">Tác vụ</th>
+                    <th class="text-center" style="width: 150px;">Tác vụ</th>
                     {% endif %}
                 </tr>
             </thead>
             <tbody>
                 {% for lich in page_obj %}
                 <tr>
-                    <td class="checkbox-cell"><input type="checkbox" class="checkbox-input" aria-label="Chọn dòng"></td>
+                    <td class="checkbox-cell"><input type="checkbox" class="checkbox-input"></td>
                     <td class="text-center">{{ page_obj.start_index|add:forloop.counter0 }}</td>
-                    <td>{{ lich.mon_hoc }}</td>
+                    <td style="font-weight: 600; color: var(--color-primary);">{{ lich.mon_hoc }}</td>
                     <td>{{ lich.giang_vien.ho_ten }}</td>
                     <td>{{ lich.lop_hoc.ten_lop|default:lich.ma_lop|default:"-" }}</td>
-                    <td class="text-center">{{ lich.phong_hoc.ma_phong }}</td>
+                    <td class="text-center" style="font-weight: 700;">{{ lich.phong_hoc.ma_phong }}</td>
                     <td class="text-center">{{ lich.tiet_bat_dau }}-{{ lich.tiet_ket_thuc }}</td>
                     <td class="text-center">
                         {% if lich.trang_thai == 'hoat_dong' %}
-                        <span class="status-text status-active">Hoạt động</span>
+                        <span class="badge badge-success" style="font-size: 11px;">Hoạt động</span>
                         {% else %}
-                        <span class="status-text status-cancel">Đã hủy</span>
+                        <span class="badge badge-danger" style="font-size: 11px;">Đã hủy</span>
                         {% endif %}
                     </td>
                     {% if user.la_giao_vu %}
                     <td class="text-center">
-                        <a href="{% url 'chinh_sua_lich' lich.pk %}" class="btn btn-sm btn-primary">Sửa</a>
-                        {% if lich.trang_thai == 'hoat_dong' %}
-                        <a href="{% url 'huy_lich' lich.pk %}" class="btn btn-sm btn-danger">Hủy</a>
-                        {% endif %}
+                        <div style="display: flex; gap: 5px; justify-content: center;">
+                            <a href="{% url 'chinh_sua_lich' lich.pk %}" class="btn btn-primary btn-action">Sửa</a>
+                            {% if lich.trang_thai == 'hoat_dong' %}
+                            <a href="{% url 'huy_lich' lich.pk %}" class="btn btn-danger btn-action">Hủy</a>
+                            {% endif %}
+                        </div>
                     </td>
                     {% endif %}
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="{% if user.la_giao_vu %}9{% else %}8{% endif %}" class="text-center" style="padding: 24px;">
-                        Không có lịch học nào trong ngày này.
+                    <td colspan="{% if user.la_giao_vu %}9{% else %}8{% endif %}" class="empty-state">
+                        <i class='bx bx-info-circle' style="font-size: 24px; display: block; margin-bottom: 8px;"></i>
+                        Không tìm thấy lịch học nào.
                     </td>
                 </tr>
                 {% endfor %}

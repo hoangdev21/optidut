@@ -24,45 +24,51 @@ def kiem_tra_quyen_thong_ke(view_func):
 
 @kiem_tra_quyen_thong_ke
 def tong_quan(request):
-    """Trang thống kê tổng quan."""
-    hom_nay = timezone.now().date()
-    tuan_truoc = hom_nay - timedelta(days=7)
-
-    # Thống kê phòng
+    """Trang thống kê tổng quan nâng cấp."""
+    bay_gio = timezone.now()
+    hom_nay = bay_gio.date()
+    
+    # 1. Thống kê nhanh (Stats Cards)
     tong_phong = PhongHoc.objects.count()
     phong_trong = PhongHoc.objects.filter(trang_thai='trong').count()
     phong_dang_dung = PhongHoc.objects.filter(trang_thai='dang_su_dung').count()
     phong_bao_tri = PhongHoc.objects.filter(trang_thai='bao_tri').count()
 
-    # Thống kê lịch học tuần này
-    lich_tuan_nay = LichHoc.objects.filter(
-        ngay_hoc__gte=tuan_truoc,
-        ngay_hoc__lte=hom_nay,
-        trang_thai='hoat_dong',
-    ).count()
+    # 2. Dữ liệu biểu đồ Miền (7 ngày qua)
+    chart_labels = []
+    chart_data = []
+    for i in range(6, -1, -1):
+        ngay = hom_nay - timedelta(days=i)
+        chart_labels.append(ngay.strftime('%d/%m'))
+        count = LichHoc.objects.filter(ngay_hoc=ngay, trang_thai='hoat_dong').count()
+        chart_data.append(count)
 
-    # Phòng sử dụng nhiều nhất
+    # 3. Top 10 phòng sử dụng nhiều nhất/ít nhất
     phong_nhieu_nhat = PhongHoc.objects.annotate(
         so_lan_dung=Count('lich_hocs', filter=Q(lich_hocs__trang_thai='hoat_dong'))
     ).order_by('-so_lan_dung')[:10]
 
-    # Phòng ít sử dụng
     phong_it_dung = PhongHoc.objects.annotate(
         so_lan_dung=Count('lich_hocs', filter=Q(lich_hocs__trang_thai='hoat_dong'))
     ).order_by('so_lan_dung')[:10]
 
-    # Thiết bị hỏng
-    thiet_bi_hong = ThietBi.objects.filter(trang_thai='hong').select_related('phong_hoc')
+    # 4. Thiết bị hỏng & Báo hỏng gần đây
+    thiet_bi_hong_count = ThietBi.objects.filter(trang_thai='hong').count()
+    bao_hong_moi = BaoHong.objects.select_related('thiet_bi', 'thiet_bi__phong_hoc', 'nguoi_bao').order_by('-ngay_bao')[:5]
 
     context = {
         'tong_phong': tong_phong,
         'phong_trong': phong_trong,
         'phong_dang_dung': phong_dang_dung,
         'phong_bao_tri': phong_bao_tri,
-        'lich_tuan_nay': lich_tuan_nay,
+        'thiet_bi_hong_count': thiet_bi_hong_count,
+        'chart_labels': chart_labels,
+        'chart_data': chart_data,
         'phong_nhieu_nhat': phong_nhieu_nhat,
         'phong_it_dung': phong_it_dung,
-        'thiet_bi_hong': thiet_bi_hong,
+        'bao_hong_moi': bao_hong_moi,
+        'hom_nay': hom_nay,
+        'bay_gio': bay_gio,
     }
     return render(request, 'ThongKe/TongQuan.html', context)
 

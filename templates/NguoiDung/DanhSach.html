@@ -1,150 +1,392 @@
 {% extends 'base.html' %}
 {% load static %}
-{% block title %}Quản lý tài khoản - OptiDUT{% endblock %}
+{% block title %}Hệ thống Quản lý Người dùng - OptiDUT{% endblock %}
 
 {% block extra_css %}
 <style>
-    .users-wrapper { max-width: 1400px; margin: 0 auto; }
+    .admin-wrapper { max-width: 100%; margin: 0 auto; }
     
-    /* Filter Card Style */
-    .filter-card {
-        background: var(--color-white);
-        border: 1px solid var(--color-border);
-        border-radius: 4px;
-        padding: 20px;
+    /* Toolbar Layout */
+    .admin-toolbar { 
+        background: #fff; 
+        border: 1px solid var(--color-border); 
+        padding: 20px; 
+        border-radius: 4px; 
         margin-bottom: 24px;
-    }
-    .filter-form {
         display: flex;
-        gap: 20px;
+        justify-content: space-between;
         align-items: flex-end;
+        gap: 20px;
         flex-wrap: wrap;
     }
-    .filter-item { flex: 1; min-width: 250px; }
-    .filter-item label { display: block; font-size: 12px; font-weight: 600; color: var(--color-text-secondary); margin-bottom: 6px; }
+    .toolbar-left { flex: 1; display: flex; gap: 15px; align-items: flex-end; min-width: 500px; }
+    .toolbar-right { display: flex; gap: 10px; }
 
-    /* Table Styles - No outer border on container */
-    .table-responsive { width: 100%; overflow-x: auto; }
-    .data-table { width: 100%; border-collapse: collapse; min-width: 1000px; font-size: 13px; border: none !important; }
-    .data-table th { 
-        background: var(--color-primary); 
-        color: var(--color-white); 
-        font-weight: 600; 
-        text-transform: uppercase; 
-        font-size: 11px; 
-        letter-spacing: 0.5px;
-        padding: 12px 15px;
-        text-align: left;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-    }
-    .data-table td { 
-        padding: 12px 15px; 
+    .filter-group { display: flex; flex-direction: column; gap: 6px; flex: 1; }
+    .filter-group label { font-size: 11px; font-weight: 700; color: var(--color-primary); text-transform: uppercase; }
+
+    /* Table System */
+    .table-container { 
+        background: #fff; 
         border: 1px solid var(--color-border); 
-        vertical-align: middle; 
+        border-radius: 4px; 
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
-    .data-table tbody tr:nth-child(even) { background: #F8FAFC; }
-    .data-table tbody tr:hover { background: #F1F5F9; }
+    .user-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+    .user-table th { 
+        background: #003366; 
+        color: #fff; 
+        font-weight: 600; 
+        text-align: left; 
+        padding: 14px 16px; 
+        font-size: 11px; 
+        text-transform: uppercase;
+        border-right: 1px solid rgba(255,255,255,0.1);
+    }
+    .user-table td { 
+        padding: 12px 16px; 
+        border-bottom: 1px solid #f1f5f9; 
+        border-right: 1px solid #f1f5f9;
+        vertical-align: middle;
+    }
+    .user-table tr:hover { background: #f8fafc; }
+    .user-table tr:last-child td { border-bottom: none; }
 
-    .action-btns { display: flex; gap: 8px; justify-content: center; }
+    /* Custom Badges */
+    .role-badge { 
+        font-size: 13.5px; 
+        font-weight: 500; 
+        display: inline-block;
+        color: #334155;
+    }
+
+    .action-icons { display: flex; gap: 6px; }
+    .btn-action { 
+        width: 32px; 
+        height: 32px; 
+        display: flex; 
+        align-items: center; 
+        justify-content: center; 
+        border-radius: 3px; 
+        border: 1px solid #e2e8f0;
+        background: #fff;
+        cursor: pointer;
+        transition: all 0.2s;
+        color: #64748b;
+    }
+    .btn-action:hover { background: #f1f5f9; color: var(--color-primary); border-color: var(--color-primary); }
+    .btn-action.btn-danger:hover { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
+    .btn-action.btn-key:hover { background: #fffbeb; color: #d97706; border-color: #fef3c7; }
+
+    /* Modal Styling */
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0; top: 0;
+        width: 100%; height: 100%;
+        background: rgba(0,0,0,0.5);
+        backdrop-filter: blur(4px);
+    }
+    .modal-content {
+        background: #fff;
+        margin: 10% auto;
+        width: 450px;
+        border-radius: 4px;
+        box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
+        overflow: hidden;
+        animation: slideDown 0.3s ease;
+    }
+    @keyframes slideDown {
+        from { transform: translateY(-20px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+    .modal-header { padding: 16px 20px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
+    .modal-header h3 { margin: 0; font-size: 15px; font-weight: 700; color: #1e293b; }
+    .modal-body { padding: 24px; }
+    .close-btn { cursor: pointer; font-size: 20px; color: #94a3b8; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="users-wrapper">
-    <div class="page-header">
-        <h1 class="page-title"><i class='bx bx-group'></i> Quản lý tài khoản người dùng</h1>
-        <a href="{% url 'them_nguoi_dung' %}" class="btn btn-accent"><i class='bx bx-user-plus'></i> Thêm tài khoản</a>
+<div class="admin-wrapper">
+    <div class="page-header" style="margin-bottom: 24px;">
+        <h1 class="page-title"><i class='bx bx-shield-quarter'></i> Quản trị người dùng hệ thống</h1>
     </div>
 
-    <!-- Filter Card -->
-    <div class="filter-card">
-        <form method="get" class="filter-form">
-            <div class="filter-item">
-                <label>Tìm kiếm thông tin</label>
+        <div class="admin-toolbar" style="display: flex; justify-content: space-between; align-items: flex-end; background: white; padding: 15px 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 12px rgba(0,0,0,0.03); gap: 20px; flex-wrap: wrap;">
+        <form method="get" class="filter-form" id="filterForm" style="display: flex; align-items: flex-end; gap: 12px; flex: 1;">
+            <div class="filter-group" style="flex: 1; min-width: 200px;">
+                <label style="display: block; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 5px; letter-spacing: 0.5px;">Tìm kiếm</label>
                 <div style="position: relative;">
-                    <input type="text" name="q" value="{{ tu_khoa }}" class="form-input" placeholder="Tìm theo họ tên, tên đăng nhập...">
+                    <i class='bx bx-search' style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
+                    <input type="text" name="q" value="{{ tu_khoa }}" class="form-input" placeholder="Tên, mã số, username..." style="height: 36px; padding-left: 32px; font-size: 13px; border-radius: 8px;">
                 </div>
             </div>
-            <div class="filter-item">
-                <label>Phân loại vai trò</label>
-                <select name="vai_tro" class="form-select">
-                    <option value="">Tất cả vai trò</option>
-                    {% for value, label in vai_tro_choices %}
-                    <option value="{{ value }}" {% if value == vai_tro_loc %}selected{% endif %}>{{ label }}</option>
+            <div class="filter-group" style="width: 140px;">
+                <label style="display: block; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 5px;">Vai trò</label>
+                <select name="vai_tro" class="form-select" style="height: 36px; font-size: 13px; border-radius: 8px;">
+                    <option value="">Tất cả</option>
+                    {% for val, label in vai_tro_choices %}
+                    <option value="{{ val }}" {% if vai_tro_loc == val %}selected{% endif %}>{{ label }}</option>
                     {% endfor %}
                 </select>
             </div>
-            <div style="flex-shrink: 0;">
-                <button type="submit" class="btn btn-primary" style="padding-left: 30px; padding-right: 30px;">
-                    <i class='bx bx-search-alt'></i> Lọc dữ liệu
-                </button>
+            <div class="filter-group" style="width: 110px;">
+                <label style="display: block; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 5px;">Hiển thị</label>
+                <select name="per_page" class="form-select" onchange="document.getElementById('filterForm').submit()" style="height: 36px; font-size: 13px; border-radius: 8px;">
+                    <option value="20" {% if per_page == 20 %}selected{% endif %}>20 dòng</option>
+                    <option value="50" {% if per_page == 50 %}selected{% endif %}>50 dòng</option>
+                    <option value="100" {% if per_page == 100 %}selected{% endif %}>100 dòng</option>
+                    <option value="150" {% if per_page == 150 %}selected{% endif %}>150 dòng</option>
+                </select>
             </div>
+            <button type="submit" class="btn btn-primary" style="height: 36px; padding: 0 15px; font-size: 13px; font-weight: 600; border-radius: 8px;">
+                <i class='bx bx-filter-alt'></i> Lọc
+            </button>
         </form>
+
+        <div class="action-group" style="display: flex; gap: 8px;">
+            <a href="{% url 'danh_sach_lop_sinh_hoat' %}" class="btn btn-outline" style="height: 36px; padding: 0 12px; font-size: 12px; font-weight: 600; border-radius: 8px;">
+                <i class='bx bx-group'></i> Quản lý Lớp
+            </a>
+            <button type="button" class="btn btn-outline" onclick="openImportModal()" style="height: 36px; padding: 0 12px; font-size: 12px; font-weight: 600; border-radius: 8px;">
+                <i class='bx bx-upload'></i> Nhập CSV
+            </button>
+            <a href="{% url 'xuat_nguoi_dung_csv' %}?q={{ tu_khoa }}&vai_tro={{ vai_tro_loc }}" class="btn btn-outline" style="height: 36px; padding: 0 12px; font-size: 12px; font-weight: 600; border-radius: 8px;">
+                <i class='bx bx-download'></i> Xuất CSV
+            </a>
+            <a href="{% url 'them_nguoi_dung' %}" class="btn btn-primary" style="height: 36px; padding: 0 15px; font-size: 13px; font-weight: 600; border-radius: 8px; background: #0f172a;">
+                <i class='bx bx-plus'></i> Thêm mới
+            </a>
+        </div>
     </div>
 
-    <!-- Table Section -->
-    <div class="table-responsive">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th style="width: 50px;" class="text-center">STT</th>
-                    <th>Tên đăng nhập</th>
-                    <th>Họ và tên</th>
-                    <th style="width: 120px;">Mã số</th>
-                    <th>Email liên hệ</th>
-                    <th style="width: 150px;">Vai trò</th>
-                    <th style="width: 120px;" class="text-center">Trạng thái</th>
-                    <th style="width: 120px;" class="text-center">Tác vụ</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for nd in nguoi_dungs %}
-                <tr>
-                    <td class="text-center">{{ forloop.counter0|add:nguoi_dungs.start_index }}</td>
-                    <td><strong style="color: var(--color-primary);">{{ nd.username }}</strong></td>
-                    <td>{{ nd.ho_ten }}</td>
-                    <td>{{ nd.ma_so|default:"-" }}</td>
-                    <td>{{ nd.email|default:"<small style='color:#94a3b8'>Chưa cập nhật</small>"|safe }}</td>
-                    <td>
-                        {% if nd.la_quan_tri %}<span class="badge badge-danger">Quản trị viên</span>
-                        {% elif nd.la_giao_vu %}<span class="badge badge-warning">Giáo vụ</span>
-                        {% elif nd.la_giang_vien %}<span class="badge badge-primary">Giảng viên</span>
-                        {% else %}<span class="badge badge-outline">Sinh viên</span>{% endif %}
-                    </td>
-                    <td class="text-center">
-                        {% if nd.is_active %}
-                        <span style="color: #059669; font-weight: 600;">Hoạt động</span>
-                        {% else %}
-                        <span style="color: #DC2626; font-weight: 600;">Vô hiệu</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        <div class="action-btns">
-                            <a href="{% url 'chinh_sua_nguoi_dung' nd.pk %}" class="btn btn-sm btn-outline" title="Chỉnh sửa">
-                                <i class='bx bx-edit' style="font-size: 16px; color: var(--color-primary);"></i>
-                            </a>
-                            <a href="{% url 'xoa_nguoi_dung' nd.pk %}" class="btn btn-sm btn-outline" title="Xóa" onclick="return confirm('Bạn có chắc chắn muốn xóa tài khoản này?')">
-                                <i class='bx bx-trash' style="font-size: 16px; color: var(--color-danger);"></i>
-                            </a>
-                        </div>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="8" class="text-center" style="padding: 60px;">
-                        <i class='bx bx-user-x' style="font-size: 48px; color: #E2E8F0; display: block; margin-bottom: 10px;"></i>
-                        <div style="color: var(--color-text-secondary);">Không tìm thấy tài khoản nào phù hợp.</div>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <!-- Main Table -->
+    <form id="bulkActionForm" action="{% url 'xoa_hang_loat_nguoi_dung' %}" method="POST" onsubmit="return confirm('Bạn có chắc chắn muốn xóa những người dùng đã chọn?')">
+        {% csrf_token %}
+        <div class="table-container">
+            <table class="user-table">
+                <thead>
+                    <tr>
+                        <th width="40" class="text-center"><input type="checkbox" id="selectAll"></th>
+                        <th width="60" class="text-center">STT</th>
+                        <th>Tên đăng nhập</th>
+                        <th>Họ và tên</th>
+                        <th>Mã số</th>
+                        <th>Lớp sinh hoạt</th>
+                        <th>Vai trò</th>
+                        <th width="120" class="text-center">Ngày tạo</th>
+                        <th width="140" class="text-center">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in nguoi_dungs %}
+                    <tr>
+                        <td class="text-center"><input type="checkbox" name="user_ids" value="{{ u.id }}" class="user-checkbox"></td>
+                        <td class="text-center">{{ forloop.counter0|add:nguoi_dungs.start_index }}</td>
+                        <td style="font-weight: 700; color: var(--color-primary);">{{ u.username }}</td>
+                        <td style="font-weight: 600;">{{ u.ho_ten }}</td>
+                        <td><code style="background: #f1f5f9; padding: 2px 5px; border-radius: 3px; font-size: 12px;">{{ u.ma_so|default:"N/A" }}</code></td>
+                        <td style="font-weight: 500; color: #475569;">{{ u.lop_sinh_hoat.ten_lop|default:"-" }}</td>
+                        <td>
+                            {% if u.la_quan_tri %}<span class="role-badge badge-admin">Quản trị</span>
+                            {% elif u.la_giao_vu %}<span class="role-badge badge-staff">Giáo vụ</span>
+                            {% elif u.la_giang_vien %}<span class="role-badge badge-teacher">Giảng viên</span>
+                            {% else %}<span class="role-badge badge-student">Sinh viên</span>{% endif %}
+                        </td>
+                        <td class="text-center" style="font-size: 12px; color: #94a3b8;">{{ u.date_joined|date:"d/m/Y" }}</td>
+                        <td class="text-center">
+                            <div class="action-icons">
+                                <button type="button" class="btn-action btn-key" title="Đổi mật khẩu" 
+                                    onclick="openPasswordModal('{{ u.id }}', '{{ u.ho_ten|escapejs }}')">
+                                    <i class='bx bx-key'></i>
+                                </button>
+                                <a href="{% url 'chinh_sua_nguoi_dung' u.pk %}" class="btn-action" title="Chỉnh sửa">
+                                    <i class='bx bx-edit-alt'></i>
+                                </a>
+                                <a href="{% url 'xoa_nguoi_dung' u.pk %}" class="btn-action btn-danger" title="Xóa">
+                                    <i class='bx bx-trash'></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="9" class="empty-state" style="padding: 80px;">Không tìm thấy người dùng nào phù hợp.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </form>
+
+    <div id="bulkActionBar" style="display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1e293b; color: white; padding: 12px 24px; border-radius: 50px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 1000; align-items: center; gap: 20px;">
+        <span id="selectedCount" style="font-weight: 600; font-size: 14px;">Đã chọn 0 tài khoản</span>
+        <button type="submit" form="bulkActionForm" class="btn" style="background: #ef4444; color: white; padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 600; border: none; cursor: pointer;">
+            <i class='bx bx-trash'></i> Xóa hàng loạt
+        </button>
     </div>
 
     <div style="margin-top: 20px;">
-        {% with page_obj=nguoi_dungs %}
-        {% include 'components/Pagination.html' %}
-        {% endwith %}
+        {% with page_obj=nguoi_dungs %}{% include 'components/Pagination.html' %}{% endwith %}
     </div>
 </div>
+
+<!-- Modal Nhập CSV -->
+<div id="importModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Nhập dữ liệu từ CSV</h3>
+            <span class="close-btn" onclick="closeModal('importModal')">&times;</span>
+        </div>
+        <div class="modal-body" id="importInitial">
+            <p style="font-size: 13px; color: #64748b; margin-bottom: 15px;">File CSV cần có các cột: <br> <strong>username, password, ho_ten, ma_so, email, vai_tro, lop_sinh_hoat</strong></p>
+            <form id="csvImportForm" action="{% url 'nhap_nguoi_dung_csv' %}" method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div style="margin-bottom: 20px;">
+                    <input type="file" name="csv_file" id="csvFileField" accept=".csv" required style="font-size: 13px;">
+                </div>
+                <div style="margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" name="ghi_de" id="ghiDeCheck" style="cursor: pointer;">
+                    <label for="ghiDeCheck" style="font-size: 13px; color: #1e293b; cursor: pointer; font-weight: 600;">Cập nhật thông tin nếu tài khoản đã tồn tại</label>
+                </div>
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button type="button" class="btn btn-outline" onclick="closeModal('importModal')">Hủy</button>
+                    <button type="submit" class="btn btn-primary">Bắt đầu nhập</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Trạng thái xử lý (Ẩn mặc định) -->
+        <div class="modal-body" id="importProcessing" style="display: none; padding: 40px 24px; text-align: center;">
+            <div id="importStatusText" style="font-size: 14px; font-weight: 600; color: var(--color-primary); margin-bottom: 15px;">Đang chuẩn bị dữ liệu...</div>
+            <div style="width: 100%; height: 8px; background: #e2e8f0; border-radius: 10px; overflow: hidden; margin-bottom: 10px;">
+                <div id="importProgressBar" style="width: 0%; height: 100%; background: var(--color-primary); transition: width 0.3s ease;"></div>
+            </div>
+            <div id="importPercentText" style="font-size: 12px; color: #64748b; font-weight: 700;">0%</div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Đổi mật khẩu -->
+<div id="passwordModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Đổi mật khẩu người dùng</h3>
+            <span class="close-btn" onclick="closeModal('passwordModal')">&times;</span>
+        </div>
+        <div class="modal-body">
+            <p id="pwUserLabel" style="font-weight: 700; margin-bottom: 15px; color: var(--color-primary);"></p>
+            <form id="passwordForm" method="POST">
+                {% csrf_token %}
+                <div class="filter-group" style="margin-bottom: 20px;">
+                    <label>Mật khẩu mới</label>
+                    <input type="password" name="password" class="form-input" required placeholder="Nhập ít nhất 6 ký tự...">
+                </div>
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button type="button" class="btn btn-outline" onclick="closeModal('passwordModal')">Hủy</button>
+                    <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openImportModal() {
+        document.getElementById('importInitial').style.display = 'block';
+        document.getElementById('importProcessing').style.display = 'none';
+        document.getElementById('importModal').style.display = 'block';
+    }
+
+    // Xử lý thanh tiến trình nhập CSV (Tiến độ thực tế)
+    const importForm = document.getElementById('csvImportForm');
+    if (importForm) {
+        importForm.addEventListener('submit', function(e) {
+            // Tạo task_id duy nhất
+            const taskId = 'task_' + Math.random().toString(36).substr(2, 9);
+            
+            // Thêm task_id vào form
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'task_id';
+            input.value = taskId;
+            this.appendChild(input);
+
+            // Hiển thị trạng thái xử lý
+            document.getElementById('importInitial').style.display = 'none';
+            document.getElementById('importProcessing').style.display = 'block';
+            
+            const progressBar = document.getElementById('importProgressBar');
+            const statusText = document.getElementById('importStatusText');
+            const percentText = document.getElementById('importPercentText');
+            
+            // Bắt đầu Poll tiến độ từ server
+            const pollInterval = setInterval(() => {
+                fetch(`{% url 'lay_tien_do_nhap_csv' %}?task_id=${taskId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.progress > 0) {
+                            progressBar.style.width = data.progress + "%";
+                            percentText.innerText = data.progress + "%";
+                            statusText.innerText = data.status;
+                        }
+                    })
+                    .catch(err => console.error("Lỗi lấy tiến độ:", err));
+            }, 800); // Poll mỗi 0.8 giây để tránh tải server
+        });
+    }
+
+    function openPasswordModal(id, name) {
+        document.getElementById('pwUserLabel').innerText = "Tài khoản: " + name;
+        let actionUrl = "{% url 'reset_mat_khau' 0 %}".replace('0', id);
+        document.getElementById('passwordForm').action = actionUrl;
+        document.getElementById('passwordModal').style.display = 'block';
+    }
+
+    // Xử lý Checkbox và Thao tác hàng loạt
+    const selectAll = document.getElementById('selectAll');
+    const userCheckboxes = document.querySelectorAll('.user-checkbox');
+    const bulkBar = document.getElementById('bulkActionBar');
+    const selectedCountText = document.getElementById('selectedCount');
+
+    function updateBulkBar() {
+        const checkedCount = document.querySelectorAll('.user-checkbox:checked').length;
+        if (checkedCount > 0) {
+            bulkBar.style.display = 'flex';
+            selectedCountText.innerText = `Đã chọn ${checkedCount} tài khoản`;
+        } else {
+            bulkBar.style.display = 'none';
+        }
+    }
+
+    if (selectAll) {
+        selectAll.addEventListener('change', function() {
+            userCheckboxes.forEach(cb => {
+                cb.checked = selectAll.checked;
+            });
+            updateBulkBar();
+        });
+    }
+
+    userCheckboxes.forEach(cb => {
+        cb.addEventListener('change', updateBulkBar);
+    });
+
+    function submitBulkDelete() {
+        if (confirm('Bạn có chắc chắn muốn xóa những tài khoản đã chọn?')) {
+            document.getElementById('bulkActionForm').submit();
+        }
+    }
+
+    function closeModal(id) {
+        document.getElementById(id).style.display = 'none';
+    }
+
+    window.onclick = function(event) {
+        if (event.target.className === 'modal') {
+            event.target.style.display = "none";
+        }
+    }
+</script>
 {% endblock %}

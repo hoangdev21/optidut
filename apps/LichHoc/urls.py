@@ -9,11 +9,15 @@ urlpatterns = [
     path('huy-lich/<int:pk>/', views.huy_lich, name='huy_lich'),
     path('tra-cuu/', views.tra_cuu_phong, name='tra_cuu_phong'),
     path('goi-y-phong/', views.goi_y_phong_toi_uu, name='goi_y_phong'),
+    path('api/loc-lop-theo-mon/', views.api_loc_lop_theo_mon, name='api_loc_lop_theo_mon'),
     # Khung giờ & Thời khóa biểu
     path('khung-gio/', views.khung_gio_hoc, name='khung_gio_hoc'),
     path('thoi-khoa-bieu/', views.thoi_khoa_bieu_tuan, name='thoi_khoa_bieu_tuan'),
     # Quản lý lớp học
     path('lop/danh-sach/', views.danh_sach_lop, name='danh_sach_lop'),
+    path('lop/import-progress/', views.lay_tien_do_nhap_lop_csv, name='lay_tien_do_nhap_lop_csv'),
+    path('lop/import-csv/', views.nhap_lop_hoc_csv, name='nhap_lop_hoc_csv'),
+    path('lop/export-csv/', views.xuat_lop_hoc_csv, name='xuat_lop_hoc_csv'),
     path('lop/them-moi/', views.them_lop, name='them_lop'),
     path('lop/chinh-sua/<int:pk>/', views.chinh_sua_lop, name='chinh_sua_lop'),
     # Quản lý SV trong lớp HP
