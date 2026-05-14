@@ -387,76 +387,42 @@ def tra_cuu_phong(request):
 @login_required
 def goi_y_phong_toi_uu(request):
     """
-    Logic Gợi ý phòng thông minh:
-    - Đầu vào: ngay, tiet_bd, tiet_kt, si_so, khoa
-    - Đầu ra: Danh sách phòng trống sắp xếp theo điểm tối ưu (Scoring)
+    API Gợi ý phòng thông minh dựa trên thuật toán Heuristic Scoring.
     """
-    from apps.PhongHoc.models import PhongHoc
-    from django.db.models import Q
+    from .optimization import algorithm_room_scoring
     
     ngay_str = request.GET.get('ngay')
-    tiet_bd = int(request.GET.get('tiet_bd', 1))
-    tiet_kt = int(request.GET.get('tiet_kt', 1))
-    si_so = int(request.GET.get('si_so', 0))
-    khoa_id = request.GET.get('khoa', '') # Tên khoa hoặc ID để ưu tiên khu vực
+    try:
+        tiet_bd = int(request.GET.get('tiet_bd', 1))
+        tiet_kt = int(request.GET.get('tiet_kt', 1))
+        si_so = int(request.GET.get('si_so', 0))
+    except (ValueError, TypeError):
+        return JsonResponse({'error': 'Dữ liệu đầu vào không hợp lệ'}, status=400)
+        
+    khoa_id = request.GET.get('khoa', '')
+    lop_id = request.GET.get('lop_id')
 
     if not ngay_str:
         return JsonResponse({'error': 'Thiếu ngày học'}, status=400)
 
-    # 1. Tìm danh sách phòng đang bận trong khung giờ đó
-    phong_ban_ids = LichHoc.objects.filter(
-        ngay_hoc=ngay_str,
-        tiet_bat_dau__lte=tiet_kt,
-        tiet_ket_thuc__gte=tiet_bd
-    ).values_list('phong_hoc_id', flat=True)
+    # Gọi thuật toán tập trung
+    ket_qua_raw = algorithm_room_scoring(ngay_str, tiet_bd, tiet_kt, si_so, khoa_id, lop_id)
 
-    # 2. Lấy tất cả phòng trống và có sức chứa đủ
-    phong_trong = PhongHoc.objects.exclude(id__in=phong_ban_ids).filter(suc_chua__gte=si_so)
-
-    # 3. Thuật toán chấm điểm (Scoring) khắt khe
-    ket_qua = []
-    # Lấy thông tin lớp để biết loại phòng cần thiết (nếu có)
-    from apps.LichHoc.models import LopHoc
-    lop_obj = LopHoc.objects.filter(id=request.GET.get('lop_id')).first() if request.GET.get('lop_id') else None
-
-    for phong in phong_trong:
-        # Gốc 100 điểm cho phòng trống đủ chỗ
-        score = 100
-        
-        # A. Phạt điểm Sức chứa (Linear Penalty)
-        # Mỗi ghế trống dư ra trừ 2 điểm. Giúp phân biệt phòng 50 chỗ và 60 chỗ.
-        diff = phong.suc_chua - si_so
-        score -= (diff * 2)
-
-        # B. Ưu tiên Loại phòng (Quan trọng cho thực hành)
-        # Bỏ qua vì LopHoc không có trường loai_lop hiện tại
-        
-        # C. Ưu tiên Vị trí (Tòa nhà)
-        if khoa_id:
-            if "CNTT" in khoa_id and phong.toa_nha == 'C': score += 40
-            elif "Điện" in khoa_id and phong.toa_nha == 'B': score += 40
-            elif "Cơ khí" in khoa_id and phong.toa_nha == 'A': score += 40
-
-        # D. Ưu tiên thiết bị (Ghi chú)
-        if phong.ghi_chu and "Điều hòa" in phong.ghi_chu:
-            score += 15
-
-        # Đảm bảo điểm không âm
-        score = max(0, score)
-
-        ket_qua.append({
+    # Format lại dữ liệu cho JSON Response
+    data = []
+    for item in ket_qua_raw[:10]: # Lấy top 10
+        phong = item['phong_obj']
+        data.append({
             'id': phong.id,
             'ten_phong': f"{phong.toa_nha}.{phong.ten_phong}",
             'suc_chua': phong.suc_chua,
             'loai_phong': phong.get_loai_phong_display(),
             'ghi_chu': phong.ghi_chu,
-            'score': score
+            'score': item['score'],
+            'ly_do': item['ly_do']
         })
 
-    # Sắp xếp theo điểm giảm dần
-    ket_qua = sorted(ket_qua, key=lambda x: x['score'], reverse=True)
-
-    return JsonResponse({'data': ket_qua[:10]}) # Trả về top 10 gợi ý
+    return JsonResponse({'data': data})
 
 
 def api_loc_lop_theo_mon(request):

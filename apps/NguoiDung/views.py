@@ -309,6 +309,28 @@ def thong_tin_ca_nhan(request):
         
     return render(request, 'NguoiDung/ThongTinCaNhan.html', {'user': user, 'stats': stats})
 
+
+@login_required
+def doi_mat_khau(request):
+    """Trang đổi mật khẩu dành cho người dùng cá nhân."""
+    from django.contrib.auth.forms import PasswordChangeForm
+    from django.contrib.auth import update_session_auth_hash
+    
+    if request.method == 'POST':
+        form = PasswordChangeForm(request.user, request.POST)
+        if form.is_valid():
+            user = form.save()
+            # Giữ cho người dùng vẫn đăng nhập sau khi đổi mật khẩu
+            update_session_auth_hash(request, user)
+            messages.success(request, 'Mật khẩu của bạn đã được thay đổi thành công!')
+            return redirect('thong_tin_ca_nhan')
+    else:
+        form = PasswordChangeForm(request.user)
+    
+    return render(request, 'NguoiDung/DoiMatKhau.html', {
+        'form': form
+    })
+
 def kiem_tra_quan_tri(view_func):
     """Decorator kiểm tra quyền quản trị viên."""
     def wrapper(request, *args, **kwargs):

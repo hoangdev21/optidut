@@ -3,20 +3,20 @@ from django.db import models
 
 
 KHUNG_GIO_TIET = {
-    1: {"bat_dau": "07:00", "ket_thuc": "07:50", "buoi": "Buoi sang"},
-    2: {"bat_dau": "08:00", "ket_thuc": "08:50", "buoi": "Buoi sang"},
-    3: {"bat_dau": "09:00", "ket_thuc": "09:50", "buoi": "Buoi sang"},
-    4: {"bat_dau": "10:00", "ket_thuc": "10:50", "buoi": "Buoi sang"},
-    5: {"bat_dau": "11:00", "ket_thuc": "11:50", "buoi": "Buoi sang"},
-    6: {"bat_dau": "12:30", "ket_thuc": "13:20", "buoi": "Buoi chieu"},
-    7: {"bat_dau": "13:30", "ket_thuc": "14:20", "buoi": "Buoi chieu"},
-    8: {"bat_dau": "14:30", "ket_thuc": "15:20", "buoi": "Buoi chieu"},
-    9: {"bat_dau": "15:30", "ket_thuc": "16:20", "buoi": "Buoi chieu"},
-    10: {"bat_dau": "16:30", "ket_thuc": "17:20", "buoi": "Buoi chieu"},
-    11: {"bat_dau": "17:30", "ket_thuc": "18:15", "buoi": "Buoi toi"},
-    12: {"bat_dau": "18:15", "ket_thuc": "19:00", "buoi": "Buoi toi"},
-    13: {"bat_dau": "19:10", "ket_thuc": "19:55", "buoi": "Buoi toi"},
-    14: {"bat_dau": "19:55", "ket_thuc": "20:40", "buoi": "Buoi toi"},
+    1: {"bat_dau": "07:00", "ket_thuc": "07:50", "buoi": "Buổi sáng"},
+    2: {"bat_dau": "08:00", "ket_thuc": "08:50", "buoi": "Buổi sáng"},
+    3: {"bat_dau": "09:00", "ket_thuc": "09:50", "buoi": "Buổi sáng"},
+    4: {"bat_dau": "10:00", "ket_thuc": "10:50", "buoi": "Buổi sáng"},
+    5: {"bat_dau": "11:00", "ket_thuc": "11:50", "buoi": "Buổi sáng"},
+    6: {"bat_dau": "12:30", "ket_thuc": "13:20", "buoi": "Buổi chiều"},
+    7: {"bat_dau": "13:30", "ket_thuc": "14:20", "buoi": "Buổi chiều"},
+    8: {"bat_dau": "14:30", "ket_thuc": "15:20", "buoi": "Buổi chiều"},
+    9: {"bat_dau": "15:30", "ket_thuc": "16:20", "buoi": "Buổi chiều"},
+    10: {"bat_dau": "16:30", "ket_thuc": "17:20", "buoi": "Buổi chiều"},
+    11: {"bat_dau": "17:30", "ket_thuc": "18:15", "buoi": "Buổi tối"},
+    12: {"bat_dau": "18:15", "ket_thuc": "19:00", "buoi": "Buổi tối"},
+    13: {"bat_dau": "19:10", "ket_thuc": "19:55", "buoi": "Buổi tối"},
+    14: {"bat_dau": "19:55", "ket_thuc": "20:40", "buoi": "Buổi tối"},
 }
 
 

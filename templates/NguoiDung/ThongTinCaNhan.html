@@ -219,11 +219,16 @@
                 </div>
             </div>
 
-            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--color-border); display: flex; justify-content: flex-end; gap: 12px;">
-                <a href="{% url 'dashboard' %}" class="btn btn-outline" style="border-radius: 4px;">Hủy bỏ</a>
-                <button type="submit" class="btn btn-primary" style="border-radius: 4px; padding-left: 30px; padding-right: 30px;">
-                    <i class='bx bx-save'></i> Lưu thay đổi
-                </button>
+            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center;">
+                <a href="{% url 'doi_mat_khau' %}" class="btn btn-outline" style="border-radius: 4px; color: var(--color-primary); border-color: var(--color-primary);">
+                    <i class='bx bx-key'></i> Đổi mật khẩu
+                </a>
+                <div style="display: flex; gap: 12px;">
+                    <a href="{% url 'dashboard' %}" class="btn btn-outline" style="border-radius: 4px;">Hủy bỏ</a>
+                    <button type="submit" class="btn btn-primary" style="border-radius: 4px; padding-left: 30px; padding-right: 30px;">
+                        <i class='bx bx-save'></i> Lưu thay đổi
+                    </button>
+                </div>
             </div>
         </form>
 

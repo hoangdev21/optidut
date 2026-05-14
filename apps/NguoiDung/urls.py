@@ -17,4 +17,5 @@ urlpatterns = [
     path('classes/<int:pk>/edit/', views.sua_lop_sinh_hoat, name='sua_lop_sinh_hoat'),
     path('classes/<int:pk>/delete/', views.xoa_lop_sinh_hoat, name='xoa_lop_sinh_hoat'),
     path('profile/', views.thong_tin_ca_nhan, name='thong_tin_ca_nhan'),
+    path('change-password/', views.doi_mat_khau, name='doi_mat_khau'),
 ]
