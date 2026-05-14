@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% block title %}Yêu cầu khôi phục lịch - OptiDUT{% endblock %}
+{% block extra_css %}
+<style>
+    .confirm-card { max-width: 600px; margin: 40px auto; background: #fff; border: 1px solid var(--color-border); border-radius: 8px; overflow: hidden; }
+    .confirm-header { background: #003366; color: #fff; padding: 20px; text-align: center; }
+    .confirm-header i { font-size: 40px; margin-bottom: 10px; display: block; }
+    .confirm-body { padding: 30px; }
+    .info-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 15px; margin-bottom: 20px; }
+    .info-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px; }
+    .info-label { color: #64748b; }
+    .info-value { font-weight: 600; color: #1e293b; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="confirm-card">
+    <div class="confirm-header">
+        <i class='bx bx-undo'></i>
+        <h2 style="margin:0;font-size:18px;">Yêu cầu khôi phục lịch học</h2>
+    </div>
+    <div class="confirm-body">
+        <p style="color:#64748b;font-size:14px;margin-bottom:20px;text-align:center;">
+            Bạn đang yêu cầu khôi phục lại lịch dạy đã bị hủy. Yêu cầu này sẽ được gửi tới Giáo vụ để phê duyệt.
+        </p>
+        
+        <div class="info-box">
+            <div class="info-row"><span class="info-label">Môn học:</span> <span class="info-value">{{ lich.mon_hoc }}</span></div>
+            <div class="info-row"><span class="info-label">Lớp:</span> <span class="info-value">{{ lich.ma_lop }}</span></div>
+            <div class="info-row"><span class="info-label">Thời gian:</span> <span class="info-value">{{ lich.ngay_hoc|date:"d/m/Y" }} (Tiết {{ lich.tiet_bat_dau }}-{{ lich.tiet_ket_thuc }})</span></div>
+            <div class="info-row"><span class="info-label">Phòng:</span> <span class="info-value">{{ lich.phong_hoc.ma_phong }}</span></div>
+        </div>
+
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-group">
+                <label style="font-weight:600;font-size:13px;display:block;margin-bottom:8px;">Lý do khôi phục lịch</label>
+                <textarea name="ly_do" class="form-input" rows="4" placeholder="Ví dụ: Nhấn nhầm nút hủy, thay đổi kế hoạch cá nhân..." required></textarea>
+            </div>
+            
+            <div style="display:flex;gap:12px;margin-top:25px;">
+                <a href="{% url 'danh_sach_lich' %}" class="btn btn-outline" style="flex:1;justify-content:center;">Hủy bỏ</a>
+                <button type="submit" class="btn btn-primary" style="flex:2;justify-content:center;">Gửi yêu cầu khôi phục</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

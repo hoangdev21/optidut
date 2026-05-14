@@ -12,6 +12,10 @@ def danh_sach_thong_bao(request):
     """Danh sách thông báo của người dùng hiện tại."""
     hom_nay = timezone.localdate()
     ngay_loc = request.GET.get('ngay', '')
+    
+    # Chế độ "Gần đây" (hiển thị tất cả) hoặc lọc theo ngày cụ thể
+    view_all = request.GET.get('all', '0') == '1'
+    
     if ngay_loc:
         try:
             ngay_hien_tai = datetime.strptime(ngay_loc, '%Y-%m-%d').date()
@@ -23,18 +27,21 @@ def danh_sach_thong_bao(request):
     # Chỉ lấy thông báo gửi cho mình hoặc thông báo chung (null recipient)
     queryset = ThongBao.objects.filter(
         Q(nguoi_nhan=request.user) | Q(nguoi_nhan__isnull=True)
-    ).select_related('nguoi_tao')
+    ).select_related('nguoi_tao').order_by('-ngay_tao')
 
-    # Lọc theo ngày nếu cần (trong template dùng week selector)
-    if ngay_loc:
-        queryset = queryset.filter(ngay_tao__date=ngay_hien_tai)
+    # Nếu không phải chế độ "Xem tất cả", thì lọc theo ngày
+    if not view_all:
+        # Sử dụng range để lọc chính xác ngày (tránh lỗi múi giờ database)
+        start_dt = timezone.make_aware(datetime.combine(ngay_hien_tai, datetime.min.time()))
+        end_dt = timezone.make_aware(datetime.combine(ngay_hien_tai, datetime.max.time()))
+        queryset = queryset.filter(ngay_tao__range=(start_dt, end_dt))
 
     # Lọc theo loại
     loai_loc = request.GET.get('loai', '')
     if loai_loc:
         queryset = queryset.filter(loai=loai_loc)
 
-    # Dữ liệu cho week selector
+    # Dữ liệu cho week selector (Dựa trên ngày hiện tại hoặc ngày đang chọn)
     dau_tuan = ngay_hien_tai - timedelta(days=ngay_hien_tai.weekday())
     cuoi_tuan = dau_tuan + timedelta(days=6)
     tuan_truoc = dau_tuan - timedelta(days=7)
@@ -48,7 +55,7 @@ def danh_sach_thong_bao(request):
             'ngay': ngay,
             'ten_thu': thu_map.get(ngay.weekday(), ''),
             'is_today': ngay == hom_nay,
-            'is_selected': ngay == ngay_hien_tai,
+            'is_selected': not view_all and ngay == ngay_hien_tai,
         })
 
     paginator = Paginator(queryset, 10)
@@ -65,6 +72,7 @@ def danh_sach_thong_bao(request):
         'tuan_sau': tuan_sau,
         'hom_nay': hom_nay,
         'loai_loc': loai_loc,
+        'view_all': view_all,
         'loai_choices': ThongBao.Loai.choices,
     })
 

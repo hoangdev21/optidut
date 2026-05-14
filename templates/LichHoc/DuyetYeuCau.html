@@ -37,7 +37,7 @@
                 <div class="review-item"><div class="r-label">Môn học</div><div class="r-val">{{ yc.lich_hoc.mon_hoc }}</div></div>
                 <div class="review-item"><div class="r-label">Lớp</div><div class="r-val">{{ yc.lich_hoc.lop_hoc.ten_lop|default:"-" }}</div></div>
                 <div class="review-item"><div class="r-label">Phòng hiện tại</div><div class="r-val">{{ yc.lich_hoc.phong_hoc.ma_phong }}</div></div>
-                <div class="review-item"><div class="r-label">Ngày / Tiết</div><div class="r-val">{{ yc.lich_hoc.ngay_hoc|date:"d/m/Y" }} • Tiết {{ yc.lich_hoc.tiet_bat_dau }}-{{ yc.lich_hoc.tiet_ket_thuc }}</div></div>
+                <div class="review-item"><div class="r-label">Ngày / Tiết</div><div class="r-val">{{ yc.lich_hoc.ngay_hoc|date:"d/m/Y" }} - Tiết {{ yc.lich_hoc.tiet_bat_dau }}-{{ yc.lich_hoc.tiet_ket_thuc }}</div></div>
             </div>
 
             <div class="review-reason">
@@ -47,7 +47,7 @@
 
             {% if yc.phong_moi or yc.ngay_moi or yc.tiet_moi_bat_dau %}
             <div class="review-change">
-                <h4>📋 Thay đổi đề xuất</h4>
+                <h4>Thay đổi đề xuất</h4>
                 {% if yc.phong_moi %}
                 <div class="change-row">Phòng: <span class="old">{{ yc.lich_hoc.phong_hoc.ma_phong }}</span> → <span class="new">{{ yc.phong_moi.ma_phong }}</span></div>
                 {% endif %}

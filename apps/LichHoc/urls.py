@@ -7,6 +7,7 @@ urlpatterns = [
     path('them-moi-hang-loat/', views.them_lich_hang_loat, name='them_lich_hang_loat'),
     path('chinh-sua/<int:pk>/', views.chinh_sua_lich, name='chinh_sua_lich'),
     path('huy-lich/<int:pk>/', views.huy_lich, name='huy_lich'),
+    path('xoa-lich/<int:pk>/', views.xoa_lich, name='xoa_lich'),
     path('tra-cuu/', views.tra_cuu_phong, name='tra_cuu_phong'),
     path('goi-y-phong/', views.goi_y_phong_toi_uu, name='goi_y_phong'),
     path('api/loc-lop-theo-mon/', views.api_loc_lop_theo_mon, name='api_loc_lop_theo_mon'),
@@ -26,6 +27,7 @@ urlpatterns = [
     path('lop/<int:pk>/xoa-sv/<int:sv_id>/', views.xoa_sv_khoi_lop, name='xoa_sv_khoi_lop'),
     # Yêu cầu đổi lịch
     path('yeu-cau/tao/<int:lich_pk>/', views.tao_yeu_cau_doi_lich, name='tao_yeu_cau_doi_lich'),
+    path('yeu-cau/hoan-lich/<int:pk>/', views.yeu_cau_hoan_lich, name='yeu_cau_hoan_lich'),
     path('yeu-cau/danh-sach/', views.danh_sach_yeu_cau, name='danh_sach_yeu_cau'),
     path('yeu-cau/chinh-sua/<int:pk>/', views.chinh_sua_yeu_cau, name='chinh_sua_yeu_cau'),
     path('yeu-cau/duyet/<int:pk>/', views.duyet_yeu_cau, name='duyet_yeu_cau'),

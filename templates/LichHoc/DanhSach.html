@@ -252,11 +252,17 @@
                 {% if user.la_giao_vu %}
                 <td>
                     <div class="table-actions">
-                        <a href="{% url 'chinh_sua_lich' l.pk %}" class="btn btn-sm btn-primary">Sửa</a>
+                        <a href="{% url 'chinh_sua_lich' l.pk %}" class="btn btn-sm btn-primary" title="Chỉnh sửa">Sửa</a>
                         {% if l.trang_thai == 'hoat_dong' %}
-                        <a href="{% url 'huy_lich' l.pk %}" class="btn btn-sm btn-danger">Hủy</a>
+                        <a href="{% url 'huy_lich' l.pk %}" class="btn btn-sm btn-danger" title="Hủy lịch (giữ lại bản ghi)">Hủy</a>
                         {% endif %}
-                        <a href="?ngay={{ ngay_hien_tai|date:'Y-m-d' }}&bao_hong={{ l.id }}{% for key, value in request.GET.items %}{% if key != 'bao_hong' and key != 'page' and key != 'ngay' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="btn btn-sm btn-outline">Báo hỏng</a>
+                        <form action="{% url 'xoa_lich' l.pk %}" method="POST" style="display:inline;" onsubmit="return confirm('BẠN CÓ CHẮC CHẮN MUỐN XÓA VĨNH VIỄN LỊCH HỌC NÀY?\nThao tác này không thể hoàn tác.')">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline" style="color:#dc2626;border-color:#fecaca;" title="Xóa vĩnh viễn">
+                                <i class='bx bx-trash'></i>
+                            </button>
+                        </form>
+                        <a href="?ngay={{ ngay_hien_tai|date:'Y-m-d' }}&bao_hong={{ l.id }}{% for key, value in request.GET.items %}{% if key != 'bao_hong' and key != 'page' and key != 'ngay' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="btn btn-sm btn-outline" title="Báo hỏng thiết bị">Báo hỏng</a>
                     </div>
                 </td>
                 {% elif user.la_giang_vien and l.giang_vien == user %}
@@ -264,6 +270,11 @@
                     <a href="{% url 'tao_yeu_cau_doi_lich' l.pk %}" class="btn btn-sm btn-outline" title="Yêu cầu đổi lịch">
                         <i class='bx bx-git-pull-request'></i> Đổi
                     </a>
+                    {% if l.trang_thai == 'da_huy' %}
+                    <a href="{% url 'yeu_cau_hoan_lich' l.pk %}" class="btn btn-sm btn-primary" title="Khôi phục lịch dạy này">
+                        <i class='bx bx-undo'></i> Hoàn lại
+                    </a>
+                    {% endif %}
                     <a href="?ngay={{ ngay_hien_tai|date:'Y-m-d' }}&bao_hong={{ l.id }}{% for key, value in request.GET.items %}{% if key != 'bao_hong' and key != 'page' and key != 'ngay' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="btn btn-sm btn-outline" title="Báo hỏng thiết bị">
                         <i class='bx bx-error-circle'></i> Báo hỏng
                     </a>

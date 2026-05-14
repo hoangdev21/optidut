@@ -189,6 +189,7 @@ class YeuCauDoiLich(models.Model):
         ("doi_phong", "Đổi phòng học"),
         ("doi_gio", "Đổi giờ/tiết học"),
         ("huy_buoi", "Hủy buổi học"),
+        ("hoan_lich", "Hoàn lại lịch dạy"),
         ("khac", "Khác"),
     ]
     TRANG_THAI_CHOICES = [

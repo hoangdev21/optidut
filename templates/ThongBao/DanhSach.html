@@ -4,105 +4,102 @@
 
 {% block extra_css %}
 <style>
-    .notif-wrapper { max-width: 1400px; margin: 0 auto; }
+    .notif-page-wrapper { max-width: 1400px; margin: 0 auto; padding-bottom: 60px; }
     
-    /* Week Day Selector Styles - Spread out */
+    /* Toolbar & Navigation */
     .week-toolbar { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
-    .week-label { font-size: 16px; font-weight: 600; color: var(--color-text); min-width: 220px; text-align: center; }
-    .week-label small { display: block; font-size: 12px; font-weight: 400; color: var(--color-text-secondary); }
+    .week-label { font-size: 16px; font-weight: 600; color: #1e293b; min-width: 220px; text-align: center; }
+    .week-label small { display: block; font-size: 12px; font-weight: 400; color: #64748b; }
 
-    .week-days { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; margin-bottom: 30px; }
+    .week-days { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-bottom: 32px; }
     .day-btn { 
-        display: inline-flex; 
-        flex-direction: column; 
-        align-items: center; 
-        justify-content: center; 
-        min-width: 120px; 
-        padding: 12px 15px; 
-        border: 1px solid var(--color-border); 
-        background: var(--color-white); 
-        color: var(--color-text); 
-        font-size: 13px; 
-        font-weight: 600;
-        border-radius: 4px;
-        transition: all 0.2s ease;
-        text-decoration: none;
+        display: inline-flex; flex-direction: column; align-items: center; justify-content: center; 
+        min-width: 110px; padding: 12px 8px; border: 1px solid #e2e8f0; background: #fff; 
+        color: #1e293b; font-size: 13px; font-weight: 600; border-radius: 8px; transition: all 0.2s; text-decoration: none;
     }
-    .day-btn span { margin-top: 4px; font-size: 11px; color: var(--color-text-secondary); font-weight: 400; }
-    .day-btn:hover { border-color: var(--color-primary); background: #F8FAFC; transform: translateY(-2px); }
-    .day-btn.is-active { background: var(--color-primary); border-color: var(--color-primary); color: var(--color-white); box-shadow: 0 4px 10px rgba(0,51,102,0.15); }
+    .day-btn span { margin-top: 4px; font-size: 11px; color: #64748b; font-weight: 400; }
+    .day-btn:hover { border-color: #003366; background: #f8fafc; transform: translateY(-2px); }
+    .day-btn.is-active { background: #003366; border-color: #003366; color: #fff; box-shadow: 0 4px 12px rgba(0, 51, 102, 0.15); }
     .day-btn.is-active span { color: rgba(255, 255, 255, 0.8); }
     .day-btn.is-today { position: relative; }
     .day-btn.is-today::after {
-        content: 'Hôm nay';
-        position: absolute;
-        top: -8px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: var(--color-accent);
-        color: white;
-        font-size: 9px;
-        padding: 1px 6px;
-        border-radius: 10px;
+        content: 'Hôm nay'; position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
+        background: #f59e0b; color: white; font-size: 9px; padding: 2px 10px; border-radius: 10px; 
+        font-weight: 700; white-space: nowrap; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
 
-    /* Compact List Items */
-    .notif-list { border: 1px solid var(--color-border); border-radius: 4px; background: var(--color-white); overflow: hidden; }
-    .notif-item { 
-        padding: 15px 24px; 
-        display: flex; 
-        align-items: center; 
-        gap: 20px; 
-        border-bottom: 1px solid var(--color-border);
-        transition: background 0.2s;
-        text-decoration: none;
-        color: inherit;
+    /* Compact List Layout */
+    .notif-list-container { 
+        background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; 
+        box-shadow: 0 1px 3px rgba(0,0,0,0.02);
     }
-    .notif-item:last-child { border-bottom: none; }
-    .notif-item:hover { background: #FBFDFF; }
-    .notif-item.is-unread { background: #F0F9FF; }
     
-    .notif-icon { 
-        width: 36px; height: 36px; border-radius: 50%; background: #F1F5F9; 
-        display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;
+    .notif-row { 
+        display: flex; align-items: center; gap: 16px; padding: 12px 20px; 
+        border-bottom: 1px solid #f1f5f9; transition: background 0.2s; text-decoration: none; color: inherit;
     }
-    .notif-main { flex: 1; display: flex; align-items: center; justify-content: space-between; gap: 40px; }
-    .notif-info { flex: 1; }
-    .notif-title { font-weight: 700; color: var(--color-text); font-size: 14px; margin-bottom: 2px; }
-    .notif-body { font-size: 13px; color: var(--color-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 600px; }
+    .notif-row:last-child { border-bottom: none; }
+    .notif-row:hover { background: #f8fafc; }
+    .notif-row.is-unread { background: #fcfdfe; border-left: 3px solid #003366; }
     
-    .notif-meta-side { text-align: right; min-width: 200px; }
-    .notif-time { font-size: 12px; color: var(--color-text-secondary); font-weight: 500; }
-    .notif-badge { font-size: 11px; color: var(--color-primary); font-weight: 600; display: block; margin-top: 2px; }
+    .notif-icon-box { width: 32px; height: 32px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+    .notif-icon-box img { width: 100%; height: 100%; object-fit: contain; }
 
-    .notif-type-tag {
-        font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 600; text-transform: uppercase;
+    .notif-main-info { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+    
+    .notif-text { flex: 1; min-width: 0; }
+    .notif-title { font-weight: 700; color: #003366; font-size: 14px; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .notif-body { font-size: 13px; color: #64748b; margin: 2px 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .notif-meta { display: flex; align-items: center; gap: 15px; flex-shrink: 0; text-align: right; }
+    .notif-time { font-size: 12px; color: #94a3b8; min-width: 110px; }
+    
+    .notif-tag {
+        font-size: 11px; 
+        font-weight: 800; 
+        text-transform: uppercase; 
+        min-width: 80px; 
+        text-align: right;
+        display: inline-block;
     }
-    .tag-doi_phong { background: #E0E7FF; color: #4338CA; }
-    .tag-doi_lich { background: #FEF3C7; color: #92400E; }
-    .tag-huy_lich { background: #FEE2E2; color: #991B1B; }
-    .tag-bao_tri { background: #F1F5F9; color: #475569; }
+    .tag-doi_phong { color: #4338ca; }
+    .tag-doi_lich { color: #d97706; }
+    .tag-huy_lich { color: #dc2626; }
+    .tag-bao_tri { color: #475569; }
+
+    /* General UI */
+    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+    .btn { height: 36px; border-radius: 6px; padding: 0 14px; font-size: 12.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; border: 1px solid transparent; transition: all 0.2s; text-decoration: none; }
+    .btn-primary { background: #003366; color: white; }
+    .btn-outline { background: white; border-color: #e2e8f0; color: #64748b; }
+
+    @media (max-width: 768px) {
+        .notif-main-info { flex-direction: column; align-items: flex-start; gap: 5px; }
+        .notif-meta { width: 100%; justify-content: space-between; margin-top: 5px; }
+        .notif-row { align-items: flex-start; }
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="notif-wrapper">
-    <div class="page-header" style="margin-bottom: 24px;">
-        <h1 class="page-title"><i class='bx bxs-bell'></i> Thông báo hệ thống</h1>
+<div class="notif-page-wrapper">
+    <div class="page-header">
+        <h1 class="page-title"><i class='bx bxs-bell'></i> Thông báo</h1>
         <div class="header-actions">
-            <a href="{% url 'doc_tat_ca' %}" class="btn btn-outline btn-sm">Đánh dấu tất cả đã đọc</a>
+            <a href="{% url 'doc_tat_ca' %}" class="btn btn-outline">
+                <i class='bx bx-check-double'></i> Đọc tất cả
+            </a>
         </div>
     </div>
 
     <!-- Week Selector -->
     <div class="week-toolbar">
-        <a href="?ngay={{ tuan_truoc|date:'Y-m-d' }}" class="btn btn-outline">◀ Tuần trước</a>
+        <a href="?ngay={{ tuan_truoc|date:'Y-m-d' }}" class="btn btn-outline">◀</a>
         <div class="week-label">
             {{ dau_tuan|date:"d/m" }} — {{ cuoi_tuan|date:"d/m/Y" }}
-            <small>{% if hom_nay >= dau_tuan and hom_nay <= cuoi_tuan %}Tuần hiện tại{% endif %}</small>
         </div>
-        <a href="?ngay={{ tuan_sau|date:'Y-m-d' }}" class="btn btn-outline">Tuần sau ▶</a>
-        <a href="{% url 'danh_sach_thong_bao' %}" class="btn btn-primary" style="font-size:12px;">Xem tất cả gần đây</a>
+        <a href="?ngay={{ tuan_sau|date:'Y-m-d' }}" class="btn btn-outline">▶</a>
+        <a href="?all=1" class="btn {% if view_all %}btn-primary{% else %}btn-outline{% endif %}">Gần đây</a>
     </div>
 
     <div class="week-days">
@@ -114,33 +111,33 @@
         {% endfor %}
     </div>
 
-    <div class="notif-list">
+    <div class="notif-list-container">
         {% for tb in thong_baos %}
-        <a href="{% if not tb.da_doc %}{% url 'danh_dau_da_doc' tb.pk %}{% else %}#{% endif %}" class="notif-item {% if not tb.da_doc %}is-unread{% endif %}">
-            <div class="notif-icon">
-                {% if tb.loai == 'doi_phong' %}<i class='bx bx-building'></i>
-                {% elif tb.loai == 'doi_lich' %}<i class='bx bx-time-five'></i>
-                {% elif tb.loai == 'huy_lich' %}<i class='bx bx-x-circle'></i>
-                {% else %}<i class='bx bx-info-circle'></i>{% endif %}
+        <a href="{% if not tb.da_doc %}{% url 'danh_dau_da_doc' tb.pk %}{% else %}#{% endif %}" class="notif-row {% if not tb.da_doc %}is-unread{% endif %}">
+            <div class="notif-icon-box">
+                {% if not tb.da_doc %}
+                    <img src="{% static 'img/icons/thong_bao_moi.png' %}" alt="Mới">
+                {% elif tb.loai == 'default' %}
+                    <img src="{% static 'img/icons/thong_bao.png' %}" alt="Thông báo">
+                {% else %}
+                    <img src="{% static 'img/icons/thong_bao_da_doc.png' %}" alt="Đã đọc">
+                {% endif %}
             </div>
-            <div class="notif-main">
-                <div class="notif-info">
-                    <div class="notif-title">
-                        {% if not tb.da_doc %}<span style="color: var(--color-accent); margin-right: 4px;">●</span>{% endif %}
-                        {{ tb.tieu_de }}
-                    </div>
-                    <div class="notif-body">{{ tb.noi_dung }}</div>
+            <div class="notif-main-info">
+                <div class="notif-text">
+                    <h3 class="notif-title">{{ tb.tieu_de }}</h3>
+                    <p class="notif-body">{{ tb.noi_dung }}</p>
                 </div>
-                <div class="notif-meta-side">
-                    <span class="notif-type-tag tag-{{ tb.loai }}">{{ tb.get_loai_display }}</span>
+                <div class="notif-meta">
+                    <span class="notif-tag tag-{{ tb.loai }}">{{ tb.get_loai_display }}</span>
                     <div class="notif-time">{{ tb.ngay_tao|date:"H:i, d/m/Y" }}</div>
                 </div>
             </div>
         </a>
         {% empty %}
-        <div style="text-align:center; padding: 100px 20px;">
-            <i class='bx bx-bell-off' style="font-size: 64px; color: #E2E8F0; display: block; margin-bottom: 15px;"></i>
-            <div style="color: var(--color-text-secondary); font-size: 16px;">Không có thông báo nào trong danh sách.</div>
+        <div style="text-align:center; padding: 60px 20px;">
+            <i class='bx bx-bell-off' style="font-size: 40px; color: #E2E8F0; display: block; margin-bottom: 10px;"></i>
+            <div style="color: #94a3b8; font-size: 14px;">Không có thông báo nào.</div>
         </div>
         {% endfor %}
     </div>

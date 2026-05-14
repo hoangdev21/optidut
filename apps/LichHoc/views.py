@@ -294,6 +294,17 @@ def huy_lich(request, pk):
     return render(request, 'LichHoc/XacNhanHuy.html', {'lich': lich})
 
 
+@kiem_tra_quyen_lich
+def xoa_lich(request, pk):
+    """Xóa vĩnh viễn lịch học."""
+    lich = get_object_or_404(LichHoc, pk=pk)
+    if request.method == 'POST':
+        mon_hoc_ten = str(lich.mon_hoc)
+        lich.delete()
+        messages.success(request, f'Đã xóa vĩnh viễn lịch học môn "{mon_hoc_ten}".')
+    return redirect('danh_sach_lich')
+
+
 @login_required
 def tra_cuu_phong(request):
     """Tra cứu phòng trống theo ngày + tiết."""
@@ -1184,6 +1195,42 @@ def tao_yeu_cau_doi_lich(request, lich_pk):
 
 
 @login_required
+def yeu_cau_hoan_lich(request, pk):
+    """Giảng viên gửi yêu cầu hoàn lại lịch đã hủy."""
+    lich = get_object_or_404(LichHoc, pk=pk)
+    
+    if not request.user.la_giang_vien or lich.giang_vien != request.user:
+        messages.error(request, 'Bạn không có quyền thực hiện thao tác này.')
+        return redirect('danh_sach_lich')
+    
+    if lich.trang_thai != 'da_huy':
+        messages.warning(request, 'Lịch học này không ở trạng thái đã hủy.')
+        return redirect('danh_sach_lich')
+        
+    # Kiểm tra xem đã có yêu cầu tương tự đang chờ duyệt chưa
+    exists = YeuCauDoiLich.objects.filter(lich_hoc=lich, loai_yeu_cau='hoan_lich', trang_thai='cho_duyet').exists()
+    if exists:
+        messages.info(request, 'Yêu cầu hoàn lại lịch này đang chờ giáo vụ duyệt.')
+        return redirect('danh_sach_lich')
+
+    if request.method == 'POST':
+        ly_do = request.POST.get('ly_do', '')
+        if not ly_do:
+            messages.error(request, 'Vui lòng nhập lý do khôi phục lịch.')
+        else:
+            YeuCauDoiLich.objects.create(
+                lich_hoc=lich,
+                nguoi_yeu_cau=request.user,
+                loai_yeu_cau='hoan_lich',
+                ly_do=ly_do
+            )
+            messages.success(request, 'Đã gửi yêu cầu hoàn lại lịch học. Vui lòng chờ giáo vụ duyệt.')
+            return redirect('danh_sach_lich')
+            
+    return render(request, 'LichHoc/XacNhanHoanLich.html', {'lich': lich})
+
+
+@login_required
 def danh_sach_yeu_cau(request):
     """DS yêu cầu đổi lịch — Admin/GV duyệt, GV xem của mình."""
     # 1. Xác định ngày lọc
@@ -1347,6 +1394,9 @@ def duyet_yeu_cau(request, pk):
                 lich.save()
             elif yc.loai_yeu_cau == 'huy_buoi':
                 lich.trang_thai = 'da_huy'
+                lich.save()
+            elif yc.loai_yeu_cau == 'hoan_lich':
+                lich.trang_thai = 'hoat_dong'
                 lich.save()
 
             # Thông báo cho GV

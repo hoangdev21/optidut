@@ -159,6 +159,7 @@
                     <th>Thay đổi</th>
                     <th>Người yêu cầu</th>
                     <th class="text-center">Trạng thái</th>
+                    {% if user.la_giao_vu or user.la_quan_tri %}<th class="text-center">Hành động</th>{% endif %}
                 </tr>
             </thead>
             <tbody>
@@ -186,6 +187,15 @@
                         {% elif yc.trang_thai == 'da_duyet' %}<span class="badge badge-success">Đã duyệt</span>
                         {% else %}<span class="badge badge-danger">Từ chối</span>{% endif %}
                     </td>
+                    {% if user.la_giao_vu or user.la_quan_tri %}
+                    <td class="text-center">
+                        {% if yc.trang_thai == 'cho_duyet' %}
+                        <a href="{% url 'duyet_yeu_cau' yc.pk %}" class="btn btn-sm btn-primary">Duyệt</a>
+                        {% else %}
+                        <span style="font-size: 11px; color: #94a3b8;">Đã xử lý</span>
+                        {% endif %}
+                    </td>
+                    {% endif %}
                 </tr>
                 {% empty %}
                 <tr>
