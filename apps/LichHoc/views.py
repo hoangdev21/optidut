@@ -1752,12 +1752,16 @@ def nhap_lich_excel(request):
             'ngay_hoc': 4, 'tiet_bat_dau': 5, 'tiet_ket_thuc': 6,
             'ma_phong': 7, 'si_so': 8, 'ghi_chu': 9
         }
+        headers_detected = len(header_map) > 0
         for k in required_keys:
             if k not in header_map:
                 header_map[k] = fallback_cols[k]
         for k in ['ma_phong', 'si_so', 'ghi_chu']:
             if k not in header_map:
-                header_map[k] = fallback_cols[k]
+                if headers_detected:
+                    header_map[k] = None
+                else:
+                    header_map[k] = fallback_cols[k]
 
         errors = []
         valid_rows = []
@@ -1798,15 +1802,15 @@ def nhap_lich_excel(request):
             tiet_kt_raw = row_values[header_map['tiet_ket_thuc']]
             
             ma_phong = ''
-            if header_map['ma_phong'] < len(row_values) and row_values[header_map['ma_phong']] is not None:
+            if header_map['ma_phong'] is not None and header_map['ma_phong'] < len(row_values) and row_values[header_map['ma_phong']] is not None:
                 ma_phong = str(row_values[header_map['ma_phong']]).strip()
                 
             si_so_raw = 30
-            if header_map['si_so'] < len(row_values) and row_values[header_map['si_so']] is not None:
+            if header_map['si_so'] is not None and header_map['si_so'] < len(row_values) and row_values[header_map['si_so']] is not None:
                 si_so_raw = row_values[header_map['si_so']]
                 
             ghi_chu = ''
-            if header_map['ghi_chu'] < len(row_values) and row_values[header_map['ghi_chu']] is not None:
+            if header_map['ghi_chu'] is not None and header_map['ghi_chu'] < len(row_values) and row_values[header_map['ghi_chu']] is not None:
                 ghi_chu = str(row_values[header_map['ghi_chu']]).strip()
 
             # 1. Parse ngày học
@@ -1877,16 +1881,35 @@ def nhap_lich_excel(request):
                     errors.append(f"Dòng {row_num}: Phòng học '{ma_phong}' thuộc khu A (khu hành chính) nên không được xếp phòng học.")
                     continue
             else:
-                # Gán phòng học mặc định khả dụng (loại trừ phòng bảo trì và phòng khu A)
-                phong_hoc = PhongHoc.objects.exclude(trang_thai='bao_tri')\
-                    .exclude(toa_nha__icontains='Tòa A')\
-                    .exclude(toa_nha__icontains='Khu A')\
-                    .exclude(ma_phong__istartswith='A')\
-                    .first()
-                if not phong_hoc:
-                    errors.append(f"Dòng {row_num}: Hệ thống không có phòng học trống khả dụng nào ngoài khu A để gán mặc định.")
+                # Tự động xếp phòng học tối ưu dựa trên Heuristic Scoring (sức chứa, vị trí gần khoa, v.v.)
+                # Loại trừ các phòng đã bận trong hệ thống và các phòng đã được gán trước đó trong chính file Excel
+                from .optimization import algorithm_room_scoring
+                goi_y_phongs = algorithm_room_scoring(
+                    ngay=ngay_hoc,
+                    tiet_bd=tiet_bd,
+                    tiet_kt=tiet_kt,
+                    si_so=si_so,
+                    khoa_id=lop_hoc.khoa if lop_hoc else None,
+                    lop_id=lop_hoc.id if lop_hoc else None
+                )
+                
+                for item in goi_y_phongs:
+                    p = item['phong_obj']
+                    key_phong = (p.id, ngay_hoc)
+                    conflict_internal = False
+                    for prev_bd, prev_kt, _ in seen_phong.get(key_phong, []):
+                        if check_overlap(tiet_bd, tiet_kt, prev_bd, prev_kt):
+                            conflict_internal = True
+                            break
+                    if not conflict_internal:
+                        phong_hoc = p
+                        break
+                        
+                if phong_hoc:
+                    ma_phong = phong_hoc.ma_phong
+                else:
+                    errors.append(f"Dòng {row_num}: Không tìm thấy phòng học trống khả dụng nào phù hợp với sức chứa {si_so} vào ngày {ngay_hoc.strftime('%d/%m/%Y')} tiết {tiet_bd}-{tiet_kt}.")
                     continue
-                ma_phong = phong_hoc.ma_phong
 
             # Kiểm tra xem lịch học này đã tồn tại chính xác trên hệ thống chưa
             exact_match_db = LichHoc.objects.filter(
