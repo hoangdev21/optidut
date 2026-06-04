@@ -136,8 +136,8 @@ class LichHoc(models.Model):
             phong_hoc_id=phong_hoc_id,
             ngay_hoc=ngay_hoc,
             trang_thai="hoat_dong",
-            tiet_bat_dau__lt=tiet_ket_thuc,
-            tiet_ket_thuc__gt=tiet_bat_dau,
+            tiet_bat_dau__lte=tiet_ket_thuc,
+            tiet_ket_thuc__gte=tiet_bat_dau,
         )
         if exclude_id:
             qs = qs.exclude(pk=exclude_id)
@@ -149,8 +149,8 @@ class LichHoc(models.Model):
             giang_vien_id=giang_vien_id,
             ngay_hoc=ngay_hoc,
             trang_thai="hoat_dong",
-            tiet_bat_dau__lt=tiet_ket_thuc,
-            tiet_ket_thuc__gt=tiet_bat_dau,
+            tiet_bat_dau__lte=tiet_ket_thuc,
+            tiet_ket_thuc__gte=tiet_bat_dau,
         )
         if exclude_id:
             qs = qs.exclude(pk=exclude_id)

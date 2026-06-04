@@ -1,0 +1,335 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Nhập lịch từ Excel - OptiDUT{% endblock %}
+
+{% block extra_css %}
+<style>
+    .excel-import-container {
+        max-width: 1000px;
+        margin: 0 auto;
+    }
+    
+    /* Drag & Drop Upload Zone */
+    .upload-zone {
+        border: 2px dashed var(--color-border);
+        background: var(--color-white);
+        border-radius: 4px;
+        padding: 40px 20px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s ease-in-out;
+        margin-bottom: 24px;
+        position: relative;
+    }
+    .upload-zone:hover, .upload-zone.dragover {
+        border-color: var(--color-accent);
+        background: #FFFBF8;
+    }
+    .upload-zone-icon {
+        font-size: 48px;
+        color: var(--color-accent);
+        margin-bottom: 12px;
+        display: inline-block;
+    }
+    .upload-zone h3 {
+        font-size: 16px;
+        color: var(--color-primary);
+        margin-bottom: 6px;
+        font-weight: 600;
+    }
+    .upload-zone p {
+        font-size: 13px;
+        color: var(--color-text-secondary);
+        margin-bottom: 16px;
+    }
+    .file-input {
+        display: none;
+    }
+    
+    /* Info Card & Instructions */
+    .instruction-card {
+        background: var(--color-white);
+        border: 1px solid var(--color-border);
+        border-radius: 4px;
+        padding: 24px;
+        margin-bottom: 24px;
+    }
+    .instruction-card h4 {
+        color: var(--color-primary);
+        font-size: 15px;
+        font-weight: 600;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .rules-list {
+        font-size: 13px;
+        color: var(--color-text-secondary);
+        margin-bottom: 16px;
+        padding-left: 20px;
+    }
+    .rules-list li {
+        margin-bottom: 6px;
+    }
+    .rule-highlight {
+        color: var(--color-danger);
+        font-weight: 600;
+    }
+
+    /* Error Log Panel */
+    .error-card {
+        background: #FFF5F5;
+        border: 1px solid #FEB2B2;
+        border-radius: 4px;
+        padding: 20px;
+        margin-bottom: 24px;
+    }
+    .error-card h4 {
+        color: #C53030;
+        font-size: 15px;
+        font-weight: 600;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .error-list {
+        max-height: 300px;
+        overflow-y: auto;
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    .error-item {
+        font-size: 13px;
+        color: #9B2C2C;
+        padding: 8px 12px;
+        border-bottom: 1px solid #FED7D7;
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    .error-item:last-child {
+        border-bottom: none;
+    }
+    .error-item i {
+        margin-top: 2px;
+        color: #E53E3E;
+    }
+
+    /* Format table */
+    .format-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+        margin-top: 12px;
+    }
+    .format-table th {
+        background: #F1F5F9;
+        color: var(--color-primary);
+        font-weight: 600;
+        text-align: left;
+        padding: 10px 12px;
+        border-bottom: 2px solid var(--color-border);
+    }
+    .format-table td {
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--color-border);
+        color: var(--color-text);
+    }
+    .format-table tr:hover {
+        background: #FAF8F6;
+    }
+    .col-req {
+        color: var(--color-danger);
+        font-weight: 600;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="excel-import-container">
+    <div class="page-header">
+        <h1 class="page-title">
+            <i class='bx bx-spreadsheet' style="color: var(--color-primary); margin-right: 8px;"></i>
+            Nhập lịch học từ Excel
+        </h1>
+        <a href="{% url 'danh_sach_lich' %}" class="btn btn-outline">
+            <i class='bx bx-arrow-back'></i> Quay lại danh sách
+        </a>
+    </div>
+
+    <!-- Error Messages Display -->
+    {% if errors %}
+    <div class="error-card">
+        <h4>
+            <i class='bx bx-error-circle'></i>
+            Phát hiện {{ errors|length }} lỗi hợp lệ dữ liệu trong tệp Excel
+        </h4>
+        <p style="font-size: 12px; color: #742A2A; margin-bottom: 12px;">Vui lòng sửa đổi lại các dòng bị lỗi dưới đây và tải lên lại.</p>
+        <ul class="error-list">
+            {% for err in errors %}
+            <li class="error-item">
+                <i class='bx bx-x-circle'></i>
+                <span>{{ err }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <!-- Upload Zone Form -->
+    <form method="POST" enctype="multipart/form-data" id="uploadForm">
+        {% csrf_token %}
+        <input type="file" name="excel_file" id="excel_file" class="file-input" accept=".xlsx" onchange="submitForm()">
+        <div class="upload-zone" id="uploadZone" onclick="document.getElementById('excel_file').click()">
+            <i class='bx bx-cloud-upload upload-zone-icon'></i>
+            <h3>Kéo thả tệp Excel của bạn vào đây</h3>
+            <p>Hoặc click để duyệt tìm tệp trong máy tính của bạn (hỗ trợ .xlsx)</p>
+            <span class="btn btn-accent btn-sm">Chọn tệp tin</span>
+        </div>
+    </form>
+
+    <!-- Instructions Card -->
+    <div class="instruction-card">
+        <h4>
+            <i class='bx bx-info-circle' style="color: var(--color-accent);"></i>
+            Hướng dẫn & Quy tắc nhập thời khóa biểu mẫu
+        </h4>
+        <ul class="rules-list">
+            <li>Tệp tải lên bắt buộc phải là định dạng Excel XML (<strong>.xlsx</strong>).</li>
+            <li>Hệ thống so sánh tiêu đề cột không dấu và không khoảng trắng, do đó bạn có thể đặt tên cột gần đúng.</li>
+            <li>
+                <span class="rule-highlight">Quy tắc chống trùng lịch:</span> Hệ thống sẽ tự động đối chiếu các lịch học hiện tại trong CSDL và lịch học nội bộ file Excel để ngăn chặn việc:
+                <ul>
+                    <li>Giảng viên dạy nhiều lớp ở các phòng khác nhau trong cùng khung giờ.</li>
+                    <li>Phòng học bị trùng lịch (nhiều lớp cùng học chung phòng trong cùng khung giờ).</li>
+                    <li>Lớp học phần có 2 lịch học bị trùng giờ nhau.</li>
+                </ul>
+            </li>
+            <li>Nếu cột <strong>Mã phòng học</strong> để trống, hệ thống sẽ tự động gán vào một phòng học tạm/khả dụng để người dùng chạy chức năng <strong>"Xếp phòng tự động"</strong> để tối ưu vị trí sau này.</li>
+        </ul>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; margin-bottom: 12px;">
+            <span style="font-weight: 600; font-size: 14px; color: var(--color-primary);">Cấu trúc tệp Excel chuẩn:</span>
+            <a href="{% url 'download_file_mau_excel' %}" class="btn btn-primary btn-sm">
+                <i class='bx bx-download'></i> Tải tệp Excel mẫu (.xlsx)
+            </a>
+        </div>
+
+        <table class="format-table">
+            <thead>
+                <tr>
+                    <th style="width: 150px;">Tiêu đề cột mẫu</th>
+                    <th style="width: 120px;">Trạng thái</th>
+                    <th style="width: 160px;">Định dạng dữ liệu</th>
+                    <th>Mô tả / Ràng buộc</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="col-req">Mã môn học</td>
+                    <td class="col-req">Bắt buộc</td>
+                    <td>Chuỗi ký tự</td>
+                    <td>Mã học phần phải tồn tại sẵn trên hệ thống (Ví dụ: ME101, EE101).</td>
+                </tr>
+                <tr>
+                    <td class="col-req">Tên môn học</td>
+                    <td class="col-req">Bắt buộc</td>
+                    <td>Chuỗi ký tự</td>
+                    <td>Tên hiển thị của môn học.</td>
+                </tr>
+                <tr>
+                    <td class="col-req">Tên lớp học phần</td>
+                    <td class="col-req">Bắt buộc</td>
+                    <td>Chuỗi ký tự</td>
+                    <td>Tên lớp học phần phải tồn tại sẵn trên hệ thống (Ví dụ: 21CNCTM1, 21KTD1).</td>
+                </tr>
+                <tr>
+                    <td class="col-req">Mã giảng viên</td>
+                    <td class="col-req">Bắt buộc</td>
+                    <td>Chuỗi/Số nguyên</td>
+                    <td>Mã số hoặc Username của giảng viên trên hệ thống (Ví dụ: 2000113).</td>
+                </tr>
+                <tr>
+                    <td class="col-req">Ngày học</td>
+                    <td class="col-req">Bắt buộc</td>
+                    <td>Date / Chuỗi</td>
+                    <td>Nhập đúng dạng ngày học Excel hoặc chuỗi dạng DD/MM/YYYY hoặc YYYY-MM-DD.</td>
+                </tr>
+                <tr>
+                    <td class="col-req">Tiết bắt đầu</td>
+                    <td class="col-req">Bắt buộc</td>
+                    <td>Số nguyên (1 - 14)</td>
+                    <td>Tiết bắt đầu của buổi học (Ví dụ: 1 hoặc 5).</td>
+                </tr>
+                <tr>
+                    <td class="col-req">Tiết kết thúc</td>
+                    <td class="col-req">Bắt buộc</td>
+                    <td>Số nguyên (1 - 14)</td>
+                    <td>Tiết kết thúc (phải lớn hơn hoặc bằng Tiết bắt đầu).</td>
+                </tr>
+                <tr>
+                    <td>Mã phòng học</td>
+                    <td>Tùy chọn</td>
+                    <td>Chuỗi ký tự</td>
+                    <td>Phải là mã phòng hợp lệ và không thuộc khu A. Nếu để trống sẽ được tự động xếp phòng sau.</td>
+                </tr>
+                <tr>
+                    <td>Sĩ số</td>
+                    <td>Tùy chọn</td>
+                    <td>Số nguyên > 0</td>
+                    <td>Sĩ số lớp dự kiến (mặc định sẽ là 30 nếu để trống).</td>
+                </tr>
+                <tr>
+                    <td>Ghi chú</td>
+                    <td>Tùy chọn</td>
+                    <td>Chuỗi ký tự</td>
+                    <td>Ghi chú thông tin phụ cho buổi học.</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const uploadZone = document.getElementById('uploadZone');
+    const fileInput = document.getElementById('excel_file');
+    const uploadForm = document.getElementById('uploadForm');
+
+    // Drag over effect
+    uploadZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadZone.classList.add('dragover');
+    });
+
+    uploadZone.addEventListener('dragleave', () => {
+        uploadZone.classList.remove('dragover');
+    });
+
+    uploadZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadZone.classList.remove('dragover');
+        if (e.dataTransfer.files.length) {
+            fileInput.files = e.dataTransfer.files;
+            submitForm();
+        }
+    });
+
+    function submitForm() {
+        if (fileInput.files.length) {
+            // Show loading style
+            uploadZone.innerHTML = `
+                <i class='bx bx-loader-alt bx-spin upload-zone-icon'></i>
+                <h3>Đang đọc và phân tích dữ liệu tệp Excel...</h3>
+                <p>Vui lòng đợi trong giây lát...</p>
+            `;
+            uploadZone.style.pointerEvents = 'none';
+            uploadForm.submit();
+        }
+    }
+</script>
+{% endblock %}

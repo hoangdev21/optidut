@@ -32,4 +32,13 @@ urlpatterns = [
     path('yeu-cau/chinh-sua/<int:pk>/', views.chinh_sua_yeu_cau, name='chinh_sua_yeu_cau'),
     path('yeu-cau/duyet/<int:pk>/', views.duyet_yeu_cau, name='duyet_yeu_cau'),
     path('lich-su-thay-doi/', views.lich_su_thay_doi, name='lich_su_thay_doi'),
+
+    # Nhập lịch từ Excel và Preview tổng quan
+    path('nhap-excel/', views.nhap_lich_excel, name='nhap_lich_excel'),
+    path('nhap-excel/preview/', views.nhap_lich_excel_preview, name='nhap_lich_excel_preview'),
+    path('nhap-excel/confirm/', views.nhap_lich_excel_confirm, name='nhap_lich_excel_confirm'),
+    path('nhap-excel/cancel/', views.nhap_lich_excel_cancel, name='nhap_lich_excel_cancel'),
+    path('nhap-excel/download-mau/', views.download_file_mau_excel, name='download_file_mau_excel'),
+    path('nhap-excel/export-preview/', views.nhap_lich_excel_export_preview, name='nhap_lich_excel_export_preview'),
+    path('export-excel/', views.export_lich_excel, name='export_lich_excel'),
 ]

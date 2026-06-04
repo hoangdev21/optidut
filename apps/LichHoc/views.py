@@ -10,6 +10,8 @@ from django.utils import timezone
 from datetime import datetime, timedelta
 import io
 import csv
+import json
+
 
 from .models import LichHoc, LopHoc, MonHoc, DangKyHocPhan, YeuCauDoiLich, KHUNG_GIO_TIET
 from .forms import FormLichHoc, FormLopHoc
@@ -67,25 +69,23 @@ def danh_sach_lich(request):
     ngay_truoc = ngay_hien_tai - timedelta(days=1)
     ngay_sau = ngay_hien_tai + timedelta(days=1)
     
-    # Khởi tạo queryset
-    queryset = LichHoc.objects.select_related(
+    # Khởi tạo base queryset với các bộ lọc tìm kiếm và nâng cao (chung cho cả ngày, tuần, năm)
+    base_qs = LichHoc.objects.select_related(
         'mon_hoc', 'giang_vien', 'phong_hoc', 'lop_hoc'
-    ).filter(ngay_hoc=ngay_hien_tai)
+    )
 
-    # PHÂN QUYỀN HIỂN THỊ DỮ LIỆU CHÍNH
+    # PHÂN QUYỀN HIỂN THỊ DỮ LIỆU
+    lop_ids = None
     if request.user.la_sinh_vien:
-        # Sinh viên: Chỉ thấy lịch của các lớp mình đã đăng ký
         lop_ids = DangKyHocPhan.objects.filter(sinh_vien=request.user).values_list('lop_hoc_id', flat=True)
-        queryset = queryset.filter(lop_hoc_id__in=lop_ids)
+        base_qs = base_qs.filter(lop_hoc_id__in=lop_ids)
     elif request.user.la_giang_vien:
-        # Giảng viên: Chỉ thấy lịch dạy của mình
-        queryset = queryset.filter(giang_vien=request.user)
-    # Admin/Giáo vụ: Thấy toàn bộ (không cần filter thêm)
+        base_qs = base_qs.filter(giang_vien=request.user)
 
     # Tìm kiếm
     tu_khoa = request.GET.get('q', '')
     if tu_khoa:
-        queryset = queryset.filter(
+        base_qs = base_qs.filter(
             Q(mon_hoc__ten_mon__icontains=tu_khoa) |
             Q(mon_hoc__ma_mon__icontains=tu_khoa)
         )
@@ -94,13 +94,13 @@ def danh_sach_lich(request):
     phong_loc = request.GET.get('phong', '')
     if phong_loc:
         if phong_loc.isdigit():
-            queryset = queryset.filter(phong_hoc_id=phong_loc)
+            base_qs = base_qs.filter(phong_hoc_id=phong_loc)
         else:
-            queryset = queryset.filter(phong_hoc__ma_phong=phong_loc)
+            base_qs = base_qs.filter(phong_hoc__ma_phong=phong_loc)
 
     lop_loc = request.GET.get('lop', '')
     if lop_loc:
-        queryset = queryset.filter(lop_hoc_id=lop_loc)
+        base_qs = base_qs.filter(lop_hoc_id=lop_loc)
 
     buoi_loc = request.GET.get('buoi', '')
     buoi_map = {
@@ -110,21 +110,22 @@ def danh_sach_lich(request):
     }
     if buoi_loc in buoi_map:
         bd, kt = buoi_map[buoi_loc]
-        queryset = queryset.filter(tiet_bat_dau__lte=kt, tiet_ket_thuc__gte=bd)
+        base_qs = base_qs.filter(tiet_bat_dau__lte=kt, tiet_ket_thuc__gte=bd)
 
     tiet_loc = request.GET.get('tiet', '')
     if tiet_loc:
         try:
             tiet_loc_int = int(tiet_loc)
-            queryset = queryset.filter(tiet_bat_dau__lte=tiet_loc_int, tiet_ket_thuc__gte=tiet_loc_int)
+            base_qs = base_qs.filter(tiet_bat_dau__lte=tiet_loc_int, tiet_ket_thuc__gte=tiet_loc_int)
         except ValueError:
             tiet_loc = ''
 
     trang_thai = request.GET.get('trang_thai', '')
     if trang_thai:
-        queryset = queryset.filter(trang_thai=trang_thai)
+        base_qs = base_qs.filter(trang_thai=trang_thai)
 
-    # Sắp xếp: Ưu tiên lịch hoạt động, sau đó theo tiết bắt đầu
+    # 1. Queryset của ngày hiện tại (cho danh sách hiển thị mặc định và Table View)
+    queryset = base_qs.filter(ngay_hoc=ngay_hien_tai)
     queryset = queryset.annotate(
         priority=Case(
             When(trang_thai='hoat_dong', then=Value(1)),
@@ -132,6 +133,63 @@ def danh_sach_lich(request):
             output_field=IntegerField(),
         )
     ).order_by('priority', 'tiet_bat_dau')
+
+    # 2. Queryset của Tuần hiện tại (cho Week View)
+    mon_date = ngay_hien_tai - timedelta(days=ngay_hien_tai.weekday())
+    sun_date = mon_date + timedelta(days=6)
+    week_queryset = base_qs.filter(ngay_hoc__range=[mon_date, sun_date], trang_thai='hoat_dong')
+    
+    # 3. Queryset của Năm hiện tại (cho Year View)
+    year_queryset = base_qs.filter(ngay_hoc__year=ngay_hien_tai.year, trang_thai='hoat_dong')
+
+    # Serialize Week Data
+    week_data = []
+    for item in week_queryset:
+        week_data.append({
+            'lop_hoc_id': item.lop_hoc.id if item.lop_hoc else None,
+            'ten_lop': item.lop_hoc.ten_lop if item.lop_hoc else item.ma_lop,
+            'mon_hoc_id': item.mon_hoc.id if item.mon_hoc else None,
+            'ma_mon': item.mon_hoc.ma_mon if item.mon_hoc else '',
+            'ten_mon': item.mon_hoc.ten_mon if item.mon_hoc else '',
+            'giang_vien_id': item.giang_vien.id if item.giang_vien else None,
+            'ma_giang_vien': item.giang_vien.ma_so if item.giang_vien else '',
+            'ten_giang_vien': item.giang_vien.ho_ten if item.giang_vien else '',
+            'phong_hoc_id': item.phong_hoc.id if item.phong_hoc else None,
+            'ma_phong': item.phong_hoc.ma_phong if item.phong_hoc else '',
+            'ngay_hoc': item.ngay_hoc.strftime('%Y-%m-%d'),
+            'tiet_bat_dau': item.tiet_bat_dau,
+            'tiet_ket_thuc': item.tiet_ket_thuc,
+            'si_so': item.si_so,
+            'ghi_chu': item.ghi_chu
+        })
+
+    # Group Year Data by Month
+    year_counts_qs = year_queryset.values('ngay_hoc__month').annotate(count=Count('id'))
+    year_counts = {item['ngay_hoc__month']: item['count'] for item in year_counts_qs}
+    for m in range(1, 13):
+        year_counts.setdefault(m, 0)
+
+    # Serialize Table Data
+    table_data = []
+    for item in base_qs:
+        table_data.append({
+            'lop_hoc_id': item.lop_hoc.id if item.lop_hoc else None,
+            'ten_lop': item.lop_hoc.ten_lop if item.lop_hoc else item.ma_lop,
+            'mon_hoc_id': item.mon_hoc.id if item.mon_hoc else None,
+            'ma_mon': item.mon_hoc.ma_mon if item.mon_hoc else '',
+            'ten_mon': item.mon_hoc.ten_mon if item.mon_hoc else '',
+            'giang_vien_id': item.giang_vien.id if item.giang_vien else None,
+            'ma_giang_vien': item.giang_vien.ma_so if item.giang_vien else '',
+            'ten_giang_vien': item.giang_vien.ho_ten if item.giang_vien else '',
+            'phong_hoc_id': item.phong_hoc.id if item.phong_hoc else None,
+            'ma_phong': item.phong_hoc.ma_phong if item.phong_hoc else '',
+            'ngay_hoc': item.ngay_hoc.strftime('%Y-%m-%d'),
+            'tiet_bat_dau': item.tiet_bat_dau,
+            'tiet_ket_thuc': item.tiet_ket_thuc,
+            'si_so': item.si_so,
+            'ghi_chu': item.ghi_chu
+        })
+
 
     page_size = request.GET.get('page_size', '10')
     try:
@@ -162,6 +220,58 @@ def danh_sach_lich(request):
     ds_phong = ds_phong_qs.values_list('phong_hoc_id', 'phong_hoc__ma_phong').distinct().order_by('phong_hoc__ma_phong')
     ds_lop = ds_lop_qs.values_list('lop_hoc_id', 'lop_hoc__ten_lop').distinct().order_by('lop_hoc__ten_lop')
 
+    # Xử lý báo hỏng nhanh qua danh sách lịch
+    bao_hong_id = request.GET.get('bao_hong', '')
+    bao_hong_lich = None
+    bao_hong_form = None
+    ds_thiet_bi_phong = []
+
+    if bao_hong_id:
+        bao_hong_lich = get_object_or_404(LichHoc, pk=bao_hong_id)
+        from apps.ThietBi.models import ThietBi
+        from apps.ThietBi.forms import FormBaoHong
+        ds_thiet_bi_phong = ThietBi.objects.filter(phong_hoc=bao_hong_lich.phong_hoc)
+
+        if request.method == 'POST' and request.POST.get('bao_hong_submit') == '1':
+            form = FormBaoHong(request.POST)
+            if form.is_valid():
+                bh = form.save(commit=False)
+                bh.nguoi_bao = request.user
+                bh.save()
+
+                # Đánh dấu thiết bị hỏng
+                bh.thiet_bi.trang_thai = 'hong'
+                bh.thiet_bi.save()
+
+                # Tạo thông báo
+                from apps.ThongBao.models import ThongBao
+                from apps.NguoiDung.models import NguoiDung
+                ds_nguoi_nhan = NguoiDung.objects.filter(
+                    vai_tro__in=[NguoiDung.VaiTro.QUAN_TRI, NguoiDung.VaiTro.GIAO_VU]
+                )
+                for nguoi in ds_nguoi_nhan:
+                    ThongBao.objects.create(
+                        tieu_de=f'Báo hỏng: {bh.thiet_bi.ten_thiet_bi}',
+                        noi_dung=f'{request.user.ho_ten} báo hỏng {bh.thiet_bi.ten_thiet_bi} '
+                                 f'tại phòng {bh.thiet_bi.phong_hoc.ma_phong}. Mô tả: {bh.mo_ta}',
+                        loai='bao_tri',
+                        nguoi_tao=request.user,
+                        nguoi_nhan=nguoi,
+                    )
+                messages.success(request, 'Đã gửi báo hỏng thiết bị thành công.')
+                # Trở lại trang danh sách, giữ nguyên tham số lọc trừ báo hỏng
+                redirect_url = request.path
+                query_params = request.GET.copy()
+                query_params.pop('bao_hong', None)
+                if query_params:
+                    redirect_url += '?' + query_params.urlencode()
+                return redirect(redirect_url)
+            else:
+                bao_hong_form = form
+        else:
+            bao_hong_form = FormBaoHong()
+            bao_hong_form.fields['thiet_bi'].queryset = ds_thiet_bi_phong
+
     context = {
         'lich_hocs': lich_hocs,
         'tu_khoa': tu_khoa,
@@ -179,8 +289,16 @@ def danh_sach_lich(request):
         'ds_lop': ds_lop,
         'tiet_choices': list(range(1, 15)),
         'khung_gio': KHUNG_GIO_TIET,
+        'bao_hong_lich': bao_hong_lich,
+        'bao_hong_form': bao_hong_form,
+        'ds_thiet_bi_phong': ds_thiet_bi_phong,
+        'week_schedules_json': json.dumps(week_data),
+        'year_counts_json': json.dumps(year_counts),
+        'table_schedules_json': json.dumps(table_data),
+        'ngay_hien_tai_str': ngay_hien_tai.strftime('%Y-%m-%d'),
     }
     return render(request, 'LichHoc/DanhSach.html', context)
+
 
 
 @kiem_tra_quyen_lich
@@ -1118,7 +1236,10 @@ def tao_yeu_cau_doi_lich(request, lich_pk):
             loai_yeu_cau=loai, ly_do=ly_do,
         )
         # Validate phòng mới nếu đổi phòng
-        if loai == 'doi_phong' and phong_moi_id:
+        if loai == 'doi_phong':
+            if not phong_moi_id:
+                messages.error(request, 'Vui lòng chọn phòng học mới.')
+                return redirect('tao_yeu_cau_doi_lich', lich_pk=lich.pk)
             phong = PhongHoc.objects.filter(pk=phong_moi_id).first()
             if phong:
                 trung = LichHoc.kiem_tra_trung_phong(
@@ -1129,13 +1250,23 @@ def tao_yeu_cau_doi_lich(request, lich_pk):
                     return redirect('tao_yeu_cau_doi_lich', lich_pk=lich.pk)
                 yc.phong_moi = phong
         # Thông tin đổi giờ
-        if loai == 'doi_gio':
-            if ngay_moi:
-                yc.ngay_moi = ngay_moi
-            if tiet_bd:
+        elif loai == 'doi_gio':
+            if not ngay_moi or not tiet_bd or not tiet_kt:
+                messages.error(request, 'Vui lòng điền đầy đủ ngày mới, tiết bắt đầu và tiết kết thúc mới.')
+                return redirect('tao_yeu_cau_doi_lich', lich_pk=lich.pk)
+            try:
+                yc.ngay_moi = datetime.strptime(ngay_moi, '%Y-%m-%d').date()
+            except ValueError:
+                messages.error(request, 'Ngày mới không hợp lệ.')
+                return redirect('tao_yeu_cau_doi_lich', lich_pk=lich.pk)
+            
+            try:
                 yc.tiet_moi_bat_dau = int(tiet_bd)
-            if tiet_kt:
                 yc.tiet_moi_ket_thuc = int(tiet_kt)
+            except ValueError:
+                messages.error(request, 'Tiết học mới phải là số nguyên.')
+                return redirect('tao_yeu_cau_doi_lich', lich_pk=lich.pk)
+
             # Validate
             if yc.ngay_moi and yc.tiet_moi_bat_dau and yc.tiet_moi_ket_thuc:
                 trung_phong = LichHoc.kiem_tra_trung_phong(
@@ -1469,3 +1600,824 @@ def lich_su_thay_doi(request):
         'hom_nay': hom_nay,
     }
     return render(request, 'LichHoc/LichSuThayDoi.html', context)
+
+
+
+
+
+@kiem_tra_quyen_lich
+def download_file_mau_excel(request):
+    """Tự động sinh và trả về tệp Excel mẫu để người dùng tải về."""
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Mau Lịch Học"
+    
+    headers = [
+        "Mã môn học", "Tên môn học", "Tên lớp học phần", "Mã giảng viên",
+        "Ngày học", "Tiết bắt đầu", "Tiết kết thúc", "Mã phòng học",
+        "Sĩ số", "Ghi chú"
+    ]
+    
+    ws.append(headers)
+    
+    # Một số dữ liệu mẫu thực tế của DUT
+    rows = [
+        ["AC101", "Lý thuyết điều khiển tự động", "21CNCTM1", "2000118", "2026-06-15", 1, 4, "B102", 60, "Lịch học mẫu kì hè"],
+        ["AR101", "Nguyên lý thiết kế kiến trúc", "21CNDK1", "2000125", "2026-06-15", 5, 8, "B103", 55, "Lịch thực hành"],
+        ["AU101", "Lý thuyết ô tô", "21CNSH1", "2000110", "2026-06-16", 1, 3, "", "", "Không ghi phòng để test xếp phòng tự động"]
+    ]
+    
+    for r in rows:
+        ws.append(r)
+        
+    # Styling headers
+    header_fill = PatternFill(start_color="1F4E78", end_color="1F4E78", fill_type="solid")
+    header_font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
+    center_align = Alignment(horizontal="center", vertical="center")
+    left_align = Alignment(horizontal="left", vertical="center")
+    
+    thin_border = Border(
+        left=Side(style='thin', color='BFBFBF'),
+        right=Side(style='thin', color='BFBFBF'),
+        top=Side(style='thin', color='BFBFBF'),
+        bottom=Side(style='thin', color='BFBFBF')
+    )
+    
+    # Apply header style
+    for col_idx in range(1, 11):
+        cell = ws.cell(row=1, column=col_idx)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = center_align
+        cell.border = thin_border
+        
+    # Apply data styles and auto-adjust widths
+    for row in range(2, 5):
+        for col in range(1, 11):
+            cell = ws.cell(row=row, column=col)
+            cell.font = Font(name="Calibri", size=11)
+            cell.border = thin_border
+            if col in [5, 6, 7, 8, 9]:
+                cell.alignment = center_align
+            else:
+                cell.alignment = left_align
+                
+    # Adjust column widths
+    for col in ws.columns:
+        max_len = max(len(str(cell.value or '')) for cell in col)
+        col_letter = openpyxl.utils.get_column_letter(col[0].column)
+        ws.column_dimensions[col_letter].width = max(max_len + 3, 12)
+        
+    # Write to a buffer and return
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+    
+    response = HttpResponse(
+        output.read(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response['Content-Disposition'] = 'attachment; filename="file_mau_lich_hoc.xlsx"'
+    return response
+
+
+@kiem_tra_quyen_lich
+def nhap_lich_excel(request):
+    """View upload file Excel và kiểm tra dữ liệu."""
+    if request.method == 'POST' and request.FILES.get('excel_file'):
+        import openpyxl
+        import json
+        import os
+        from django.conf import settings
+        import unicodedata
+
+        excel_file = request.FILES['excel_file']
+        
+        try:
+            wb = openpyxl.load_workbook(excel_file, read_only=True, data_only=True)
+            ws = wb.active
+        except Exception as exc:
+            messages.error(request, f'Lỗi đọc tệp Excel: {exc}')
+            return render(request, 'LichHoc/NhapExcel.html')
+
+        rows_iter = ws.iter_rows(values_only=True)
+        try:
+            headers = next(rows_iter)
+        except StopIteration:
+            messages.error(request, 'Tệp Excel rỗng.')
+            return render(request, 'LichHoc/NhapExcel.html')
+
+        if not headers:
+            messages.error(request, 'Không tìm thấy dòng tiêu đề.')
+            return render(request, 'LichHoc/NhapExcel.html')
+
+        # Map tiêu đề cột
+        header_map = {}
+        for idx, val in enumerate(headers):
+            if not val:
+                continue
+            val_str = str(val).strip().lower()
+            # Loại bỏ dấu tiếng Việt để so sánh
+            val_str = ''.join(c for c in unicodedata.normalize('NFD', val_str) if unicodedata.category(c) != 'Mn')
+            val_str = val_str.replace(' ', '').replace('_', '')
+            
+            if 'mamon' in val_str:
+                header_map['ma_mon'] = idx
+            elif 'tenmon' in val_str:
+                header_map['ten_mon'] = idx
+            elif 'tenlop' in val_str:
+                header_map['ten_lop'] = idx
+            elif 'magiangvien' in val_str or 'msgv' in val_str or 'mgv' in val_str:
+                header_map['ma_giang_vien'] = idx
+            elif 'ngayhoc' in val_str or 'ngay' in val_str:
+                header_map['ngay_hoc'] = idx
+            elif 'tietbatdau' in val_str or 'tietbd' in val_str or 'batdau' in val_str:
+                header_map['tiet_bat_dau'] = idx
+            elif 'tietkethuc' in val_str or 'tietkt' in val_str or 'kethuc' in val_str:
+                header_map['tiet_ket_thuc'] = idx
+            elif 'maphong' in val_str or 'phong' in val_str:
+                header_map['ma_phong'] = idx
+            elif 'siso' in val_str:
+                header_map['si_so'] = idx
+            elif 'ghichu' in val_str:
+                header_map['ghi_chu'] = idx
+
+        # Thiết lập cột mặc định nếu không khớp tiêu đề
+        required_keys = ['ma_mon', 'ten_mon', 'ten_lop', 'ma_giang_vien', 'ngay_hoc', 'tiet_bat_dau', 'tiet_ket_thuc']
+        fallback_cols = {
+            'ma_mon': 0, 'ten_mon': 1, 'ten_lop': 2, 'ma_giang_vien': 3,
+            'ngay_hoc': 4, 'tiet_bat_dau': 5, 'tiet_ket_thuc': 6,
+            'ma_phong': 7, 'si_so': 8, 'ghi_chu': 9
+        }
+        for k in required_keys:
+            if k not in header_map:
+                header_map[k] = fallback_cols[k]
+        for k in ['ma_phong', 'si_so', 'ghi_chu']:
+            if k not in header_map:
+                header_map[k] = fallback_cols[k]
+
+        errors = []
+        valid_rows = []
+        
+        # Để kiểm tra trùng lặp trong chính file Excel
+        seen_gv = {}
+        seen_phong = {}
+        seen_lop = {}
+
+        def check_overlap(s1, e1, s2, e2):
+            return s1 <= e2 and s2 <= e1
+
+        from apps.NguoiDung.models import NguoiDung
+        
+        # Đọc dữ liệu từng dòng
+        for row_num, row_values in enumerate(rows_iter, start=2):
+            # Bỏ qua dòng rỗng hoàn toàn
+            if not any(row_values):
+                continue
+                
+            # Kiểm tra xem các cột bắt buộc có dữ liệu không
+            missing = []
+            for key in required_keys:
+                idx = header_map[key]
+                if idx >= len(row_values) or row_values[idx] is None or str(row_values[idx]).strip() == '':
+                    missing.append(headers[idx] if idx < len(headers) else key)
+            
+            if missing:
+                errors.append(f"Dòng {row_num}: Thiếu dữ liệu bắt buộc ở các cột ({', '.join(missing)}).")
+                continue
+
+            ma_mon = str(row_values[header_map['ma_mon']]).strip()
+            ten_mon = str(row_values[header_map['ten_mon']]).strip()
+            ten_lop = str(row_values[header_map['ten_lop']]).strip()
+            ma_gv = str(row_values[header_map['ma_giang_vien']]).strip()
+            ngay_hoc_raw = row_values[header_map['ngay_hoc']]
+            tiet_bd_raw = row_values[header_map['tiet_bat_dau']]
+            tiet_kt_raw = row_values[header_map['tiet_ket_thuc']]
+            
+            ma_phong = ''
+            if header_map['ma_phong'] < len(row_values) and row_values[header_map['ma_phong']] is not None:
+                ma_phong = str(row_values[header_map['ma_phong']]).strip()
+                
+            si_so_raw = 30
+            if header_map['si_so'] < len(row_values) and row_values[header_map['si_so']] is not None:
+                si_so_raw = row_values[header_map['si_so']]
+                
+            ghi_chu = ''
+            if header_map['ghi_chu'] < len(row_values) and row_values[header_map['ghi_chu']] is not None:
+                ghi_chu = str(row_values[header_map['ghi_chu']]).strip()
+
+            # 1. Parse ngày học
+            ngay_hoc = None
+            if isinstance(ngay_hoc_raw, datetime):
+                ngay_hoc = ngay_hoc_raw.date()
+            elif hasattr(ngay_hoc_raw, 'date'):
+                ngay_hoc = ngay_hoc_raw
+            else:
+                date_str = str(ngay_hoc_raw).strip()
+                for fmt in ('%d/%m/%Y', '%Y-%m-%d', '%d-%m-%Y', '%Y/%m/%d'):
+                    try:
+                        ngay_hoc = datetime.strptime(date_str, fmt).date()
+                        break
+                    except ValueError:
+                        continue
+            if not ngay_hoc:
+                errors.append(f"Dòng {row_num}: Định dạng ngày học '{ngay_hoc_raw}' không hợp lệ. Vui lòng ghi dạng DD/MM/YYYY hoặc YYYY-MM-DD.")
+                continue
+
+            # 2. Parse tiết học
+            try:
+                tiet_bd = int(float(str(tiet_bd_raw).strip()))
+                tiet_kt = int(float(str(tiet_kt_raw).strip()))
+            except (ValueError, TypeError):
+                errors.append(f"Dòng {row_num}: Tiết học phải là số nguyên (Tiết BĐ: '{tiet_bd_raw}', Tiết KT: '{tiet_kt_raw}').")
+                continue
+                
+            if tiet_bd < 1 or tiet_bd > 14 or tiet_kt < 1 or tiet_kt > 14 or tiet_bd > tiet_kt:
+                errors.append(f"Dòng {row_num}: Khoảng tiết học ({tiet_bd} - {tiet_kt}) không hợp lệ (tiết phải từ 1 đến 14 và Tiết bắt đầu <= Tiết kết thúc).")
+                continue
+
+            # 3. Parse sĩ số
+            try:
+                si_so = int(float(str(si_so_raw).strip()))
+                if si_so <= 0:
+                    si_so = 30
+            except (ValueError, TypeError):
+                si_so = 30
+
+            # 4. Kiểm tra sự tồn tại trong CSDL
+            mon_hoc = MonHoc.objects.filter(ma_mon=ma_mon).first()
+            if not mon_hoc:
+                errors.append(f"Dòng {row_num}: Môn học có mã '{ma_mon}' không tồn tại trong hệ thống.")
+                continue
+
+            lop_hoc = LopHoc.objects.filter(ten_lop=ten_lop).first()
+            if not lop_hoc:
+                errors.append(f"Dòng {row_num}: Lớp học phần '{ten_lop}' không tồn tại trong hệ thống.")
+                continue
+
+            giang_vien = NguoiDung.objects.filter(Q(ma_so=ma_gv) | Q(username=ma_gv), vai_tro='giang_vien').first()
+            if not giang_vien:
+                errors.append(f"Dòng {row_num}: Giảng viên mã/tên đăng nhập '{ma_gv}' không tồn tại trong hệ thống.")
+                continue
+
+            phong_hoc = None
+            if ma_phong:
+                phong_hoc = PhongHoc.objects.filter(ma_phong=ma_phong).first()
+                if not phong_hoc:
+                    errors.append(f"Dòng {row_num}: Phòng học '{ma_phong}' không tồn tại trong hệ thống.")
+                    continue
+                if phong_hoc.trang_thai == 'bao_tri':
+                    errors.append(f"Dòng {row_num}: Phòng học '{ma_phong}' đang trong trạng thái bảo trì, không thể xếp lịch.")
+                    continue
+                # Kiểm tra phòng học thuộc Khu A hành chính
+                if phong_hoc.ma_phong.upper().startswith('A') or 'Tòa A' in phong_hoc.toa_nha or 'Khu A' in phong_hoc.toa_nha:
+                    errors.append(f"Dòng {row_num}: Phòng học '{ma_phong}' thuộc khu A (khu hành chính) nên không được xếp phòng học.")
+                    continue
+            else:
+                # Gán phòng học mặc định khả dụng (loại trừ phòng bảo trì và phòng khu A)
+                phong_hoc = PhongHoc.objects.exclude(trang_thai='bao_tri')\
+                    .exclude(toa_nha__icontains='Tòa A')\
+                    .exclude(toa_nha__icontains='Khu A')\
+                    .exclude(ma_phong__istartswith='A')\
+                    .first()
+                if not phong_hoc:
+                    errors.append(f"Dòng {row_num}: Hệ thống không có phòng học trống khả dụng nào ngoài khu A để gán mặc định.")
+                    continue
+                ma_phong = phong_hoc.ma_phong
+
+            # Kiểm tra xem lịch học này đã tồn tại chính xác trên hệ thống chưa
+            exact_match_db = LichHoc.objects.filter(
+                mon_hoc=mon_hoc,
+                lop_hoc=lop_hoc,
+                giang_vien=giang_vien,
+                phong_hoc=phong_hoc,
+                ngay_hoc=ngay_hoc,
+                tiet_bat_dau=tiet_bd,
+                tiet_ket_thuc=tiet_kt,
+                trang_thai='hoat_dong'
+            ).exists()
+
+            if not exact_match_db:
+                # 5. Kiểm tra trùng lịch NỘI BỘ file Excel
+                key_gv = (giang_vien.id, ngay_hoc)
+                gv_conflict = False
+                for prev_bd, prev_kt, prev_row in seen_gv.get(key_gv, []):
+                    if check_overlap(tiet_bd, tiet_kt, prev_bd, prev_kt):
+                        errors.append(f"Dòng {row_num}: Trùng lịch giảng viên {giang_vien.ho_ten} dạy cùng lúc với Dòng {prev_row} trong chính file Excel.")
+                        gv_conflict = True
+                        break
+                if not gv_conflict:
+                    seen_gv.setdefault(key_gv, []).append((tiet_bd, tiet_kt, row_num))
+
+                key_phong = (phong_hoc.id, ngay_hoc)
+                phong_conflict = False
+                for prev_bd, prev_kt, prev_row in seen_phong.get(key_phong, []):
+                    if check_overlap(tiet_bd, tiet_kt, prev_bd, prev_kt):
+                        errors.append(f"Dòng {row_num}: Trùng lịch phòng học {phong_hoc.ma_phong} bị sử dụng cùng lúc với Dòng {prev_row} trong chính file Excel.")
+                        phong_conflict = True
+                        break
+                if not phong_conflict:
+                    seen_phong.setdefault(key_phong, []).append((tiet_bd, tiet_kt, row_num))
+
+                key_lop = (lop_hoc.id, ngay_hoc)
+                lop_conflict = False
+                for prev_bd, prev_kt, prev_row in seen_lop.get(key_lop, []):
+                    if check_overlap(tiet_bd, tiet_kt, prev_bd, prev_kt):
+                        errors.append(f"Dòng {row_num}: Lớp học phần {lop_hoc.ten_lop} bị trùng lịch học cùng lúc với Dòng {prev_row} trong chính file Excel.")
+                        lop_conflict = True
+                        break
+                if not lop_conflict:
+                    seen_lop.setdefault(key_lop, []).append((tiet_bd, tiet_kt, row_num))
+
+                if gv_conflict or phong_conflict or lop_conflict:
+                    continue
+
+                # 6. Kiểm tra trùng lịch với HỆ THỐNG
+                overlap_db_gv = LichHoc.objects.filter(
+                    giang_vien=giang_vien,
+                    ngay_hoc=ngay_hoc,
+                    trang_thai='hoat_dong',
+                    tiet_bat_dau__lte=tiet_kt,
+                    tiet_ket_thuc__gte=tiet_bd
+                ).select_related('lop_hoc').first()
+                if overlap_db_gv:
+                    errors.append(f"Dòng {row_num}: Trùng lịch giảng viên {giang_vien.ho_ten} dạy lớp {overlap_db_gv.lop_hoc.ten_lop if overlap_db_gv.lop_hoc else overlap_db_gv.ma_lop} (tiết {overlap_db_gv.tiet_bat_dau}-{overlap_db_gv.tiet_ket_thuc}) đã có trên hệ thống.")
+                    continue
+
+                overlap_db_phong = LichHoc.objects.filter(
+                    phong_hoc=phong_hoc,
+                    ngay_hoc=ngay_hoc,
+                    trang_thai='hoat_dong',
+                    tiet_bat_dau__lte=tiet_kt,
+                    tiet_ket_thuc__gte=tiet_bd
+                ).select_related('lop_hoc').first()
+                if overlap_db_phong:
+                    errors.append(f"Dòng {row_num}: Trùng lịch phòng học {phong_hoc.ma_phong} bị chiếm bởi lớp {overlap_db_phong.lop_hoc.ten_lop if overlap_db_phong.lop_hoc else overlap_db_phong.ma_lop} (tiết {overlap_db_phong.tiet_bat_dau}-{overlap_db_phong.tiet_ket_thuc}) đã có trên hệ thống.")
+                    continue
+
+                overlap_db_lop = LichHoc.objects.filter(
+                    lop_hoc=lop_hoc,
+                    ngay_hoc=ngay_hoc,
+                    trang_thai='hoat_dong',
+                    tiet_bat_dau__lte=tiet_kt,
+                    tiet_ket_thuc__gte=tiet_bd
+                ).first()
+                if overlap_db_lop:
+                    errors.append(f"Dòng {row_num}: Lớp học phần {lop_hoc.ten_lop} đã có lịch học trùng ({overlap_db_lop.tiet_bat_dau}-{overlap_db_lop.tiet_ket_thuc}) đã có trên hệ thống.")
+                    continue
+
+            # Thêm dòng hợp lệ
+            valid_rows.append({
+                'lop_hoc_id': lop_hoc.id,
+                'ten_lop': ten_lop,
+                'mon_hoc_id': mon_hoc.id,
+                'ma_mon': mon_hoc.ma_mon,
+                'ten_mon': mon_hoc.ten_mon,
+                'giang_vien_id': giang_vien.id,
+                'ma_giang_vien': giang_vien.ma_so,
+                'ten_giang_vien': giang_vien.ho_ten,
+                'phong_hoc_id': phong_hoc.id,
+                'ma_phong': ma_phong,
+                'ngay_hoc': ngay_hoc.strftime('%Y-%m-%d'),
+                'tiet_bat_dau': tiet_bd,
+                'tiet_ket_thuc': tiet_kt,
+                'si_so': si_so,
+                'ghi_chu': ghi_chu
+            })
+
+        # Trả về lỗi nếu có
+        if errors:
+            return render(request, 'LichHoc/NhapExcel.html', {'errors': errors[:50]}) # Trả về tối đa 50 lỗi đầu tiên
+
+        if not valid_rows:
+            messages.warning(request, 'Không tìm thấy dòng dữ liệu nào hợp lệ.')
+            return render(request, 'LichHoc/NhapExcel.html')
+
+        # Lưu dữ liệu hợp lệ vào tệp JSON tạm
+        temp_dir = os.path.join(settings.MEDIA_ROOT, 'temp')
+        os.makedirs(temp_dir, exist_ok=True)
+        temp_file_name = f'import_preview_{request.user.id}.json'
+        temp_file_path = os.path.join(temp_dir, temp_file_name)
+        
+        try:
+            with open(temp_file_path, 'w', encoding='utf-8') as f:
+                json.dump(valid_rows, f, ensure_ascii=False, indent=4)
+            request.session['excel_import_preview_file'] = temp_file_path
+        except Exception as exc:
+            messages.error(request, f'Lỗi tạo tệp xem trước tạm thời: {exc}')
+            return render(request, 'LichHoc/NhapExcel.html')
+
+        return redirect('nhap_lich_excel_preview')
+
+    return render(request, 'LichHoc/NhapExcel.html')
+
+
+@kiem_tra_quyen_lich
+def nhap_lich_excel_preview(request):
+    """View hiển thị preview tổng quan đa chiều dạng Grid (Tuần/Tháng/Năm) của toàn trường."""
+    import json
+    import os
+    
+    file_path = request.session.get('excel_import_preview_file', '')
+    if not file_path or not os.path.exists(file_path):
+        messages.error(request, 'Không tìm thấy dữ liệu xem trước. Vui lòng tải lên lại.')
+        return redirect('nhap_lich_excel')
+        
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            preview_data = json.load(f)
+    except Exception as exc:
+        messages.error(request, f'Lỗi đọc dữ liệu xem trước: {exc}')
+        return redirect('nhap_lich_excel')
+
+    # Chuyển đổi sang JSON String để truyền vào JS ở template
+    preview_json_str = json.dumps(preview_data)
+
+    context = {
+        'preview_data': preview_data,
+        'preview_json_str': preview_json_str,
+    }
+    return render(request, 'LichHoc/NhapExcelPreview.html', context)
+
+
+@kiem_tra_quyen_lich
+@transaction.atomic
+def nhap_lich_excel_confirm(request):
+    """View xác nhận lưu lịch học từ tệp Excel tạm vào CSDL chính thức."""
+    import json
+    import os
+    
+    file_path = request.session.get('excel_import_preview_file', '')
+    if not file_path or not os.path.exists(file_path):
+        messages.error(request, 'Không tìm thấy dữ liệu nhập để xác nhận.')
+        return redirect('nhap_lich_excel')
+
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            preview_data = json.load(f)
+            
+        count_created = 0
+        from apps.ThongBao.models import ThongBao
+        
+        for row in preview_data:
+            ngay_hoc = datetime.strptime(row['ngay_hoc'], '%Y-%m-%d').date()
+            
+            # Check if this exact record already exists to avoid duplication
+            exists = LichHoc.objects.filter(
+                mon_hoc_id=row['mon_hoc_id'],
+                lop_hoc_id=row['lop_hoc_id'],
+                giang_vien_id=row['giang_vien_id'],
+                phong_hoc_id=row['phong_hoc_id'],
+                ngay_hoc=ngay_hoc,
+                tiet_bat_dau=row['tiet_bat_dau'],
+                tiet_ket_thuc=row['tiet_ket_thuc'],
+                trang_thai='hoat_dong'
+            ).exists()
+            
+            if not exists:
+                lich = LichHoc.objects.create(
+                    mon_hoc_id=row['mon_hoc_id'],
+                    lop_hoc_id=row['lop_hoc_id'],
+                    ma_lop=row['ten_lop'],
+                    giang_vien_id=row['giang_vien_id'],
+                    phong_hoc_id=row['phong_hoc_id'],
+                    ngay_hoc=ngay_hoc,
+                    tiet_bat_dau=row['tiet_bat_dau'],
+                    tiet_ket_thuc=row['tiet_ket_thuc'],
+                    si_so=row['si_so'],
+                    ghi_chu=row['ghi_chu']
+                )
+                
+                # Gửi thông báo cho giảng viên
+                ThongBao.objects.create(
+                    tieu_de=f'Lịch dạy mới phân công: {row["ten_mon"]}',
+                    noi_dung=f'Bạn được phân công giảng dạy lớp {row["ten_lop"]} tại phòng {row["ma_phong"]}, '
+                             f'ngày {row["ngay_hoc"]} (tiết {row["tiet_bat_dau"]}-{row["tiet_ket_thuc"]}).',
+                    loai='doi_lich',
+                    nguoi_nhan_id=row['giang_vien_id'],
+                    nguoi_tao=request.user
+                )
+                count_created += 1
+
+        # Xóa file tạm
+        try:
+            os.remove(file_path)
+        except Exception:
+            pass
+            
+        request.session.pop('excel_import_preview_file', None)
+        messages.success(request, f'Đã nhập thành công {count_created} lịch học phần mới vào cơ sở dữ liệu hệ thống.')
+        return redirect('danh_sach_lich')
+        
+    except Exception as exc:
+        messages.error(request, f'Lỗi hệ thống khi ghi cơ sở dữ liệu: {exc}')
+        return redirect('nhap_lich_excel')
+
+
+@kiem_tra_quyen_lich
+def nhap_lich_excel_cancel(request):
+    """Hủy bỏ và xóa tệp dữ liệu xem trước tạm thời."""
+    import os
+    file_path = request.session.get('excel_import_preview_file', '')
+    if file_path and os.path.exists(file_path):
+        try:
+            os.remove(file_path)
+        except Exception:
+            pass
+            
+    request.session.pop('excel_import_preview_file', None)
+    messages.info(request, 'Đã hủy bỏ quá trình nhập thời khóa biểu từ Excel.')
+    return redirect('nhap_lich_excel')
+
+
+@kiem_tra_quyen_lich
+def nhap_lich_excel_export_preview(request):
+    """Xuất file Excel tổng quan xem trước theo định dạng bảng biểu giống trường."""
+    import json
+    import os
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    
+    file_path = request.session.get('excel_import_preview_file', '')
+    if not file_path or not os.path.exists(file_path):
+        messages.error(request, 'Không tìm thấy dữ liệu xem trước để xuất.')
+        return redirect('nhap_lich_excel')
+        
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            preview_data = json.load(f)
+    except Exception as exc:
+        messages.error(request, f'Lỗi đọc dữ liệu xem trước: {exc}')
+        return redirect('nhap_lich_excel')
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "TKB Preview"
+    
+    headers = [
+        "STT", "Mã Lớp HP", "Mã Môn", "Tên Môn", "Thứ", "Tiết", "Số Tiết", "Buổi",
+        "Mã GV", "Tên Giảng Viên", "Phòng", "Sĩ Số"
+    ]
+    ws.append(headers)
+    
+    # Helper for weekday
+    days = ["Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ nhật"]
+    
+    for idx, row in enumerate(preview_data, start=1):
+        # Parse date to find weekday
+        date_obj = datetime.strptime(row['ngay_hoc'], '%Y-%m-%d').date()
+        weekday_str = days[date_obj.weekday()]
+        
+        tiet_bd = row['tiet_bat_dau']
+        tiet_kt = row['tiet_ket_thuc']
+        so_tiet = tiet_kt - tiet_bd + 1
+        
+        buoi = "Sáng" if tiet_bd <= 5 else ("Chiều" if tiet_bd <= 10 else "Tối")
+        
+        ws.append([
+            idx,
+            row['ten_lop'],
+            row.get('ma_mon', ''),
+            row['ten_mon'],
+            weekday_str,
+            tiet_bd,
+            so_tiet,
+            buoi,
+            row.get('ma_giang_vien', ''),
+            row['ten_giang_vien'],
+            row['ma_phong'],
+            row['si_so']
+        ])
+        
+    # Styling headers
+    header_fill = PatternFill(start_color="1F4E78", end_color="1F4E78", fill_type="solid")
+    header_font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
+    center_align = Alignment(horizontal="center", vertical="center")
+    left_align = Alignment(horizontal="left", vertical="center")
+    
+    thin_border = Border(
+        left=Side(style='thin', color='BFBFBF'),
+        right=Side(style='thin', color='BFBFBF'),
+        top=Side(style='thin', color='BFBFBF'),
+        bottom=Side(style='thin', color='BFBFBF')
+    )
+    
+    # Apply style to headers
+    for col_idx in range(1, 13):
+        cell = ws.cell(row=1, column=col_idx)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = center_align
+        cell.border = thin_border
+        
+    # Apply style to data rows
+    for r_idx in range(2, len(preview_data) + 2):
+        for c_idx in range(1, 13):
+            cell = ws.cell(row=r_idx, column=c_idx)
+            cell.font = Font(name="Calibri", size=10)
+            cell.border = thin_border
+            if c_idx in [1, 5, 6, 7, 8, 9, 11, 12]:
+                cell.alignment = center_align
+            else:
+                cell.alignment = left_align
+                
+    # Auto-fit columns
+    for col in ws.columns:
+        max_len = max(len(str(cell.value or '')) for cell in col)
+        col_letter = openpyxl.utils.get_column_letter(col[0].column)
+        ws.column_dimensions[col_letter].width = max(max_len + 3, 10)
+        
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+    
+    response = HttpResponse(
+        output.read(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response['Content-Disposition'] = 'attachment; filename="TKB_Preview_Export.xlsx"'
+    return response
+
+
+@kiem_tra_quyen_lich
+def export_lich_excel(request):
+    """Xuất danh sách lịch học (theo bộ lọc hiện tại hoặc toàn bộ) ra Excel (.xlsx)."""
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    
+    # 1. Khởi tạo queryset giống danh_sach_lich
+    queryset = LichHoc.objects.select_related(
+        'mon_hoc', 'giang_vien', 'phong_hoc', 'lop_hoc'
+    )
+    
+    # Check if they want to export ALL records (e.g. all=1 in URL)
+    export_all = request.GET.get('all', '')
+    export_table = request.GET.get('table', '')
+    
+    if not export_all:
+        if not export_table:
+            # Lọc theo ngày
+            hom_nay = timezone.now().date()
+            ngay_loc = request.GET.get('ngay', '')
+            if ngay_loc:
+                try:
+                    ngay_hien_tai = datetime.strptime(ngay_loc, '%Y-%m-%d').date()
+                except ValueError:
+                    ngay_hien_tai = hom_nay
+            else:
+                ngay_hien_tai = hom_nay
+            
+            queryset = queryset.filter(ngay_hoc=ngay_hien_tai)
+
+        
+        # Tìm kiếm
+        tu_khoa = request.GET.get('q', '')
+        if tu_khoa:
+            queryset = queryset.filter(
+                Q(mon_hoc__ten_mon__icontains=tu_khoa) |
+                Q(mon_hoc__ma_mon__icontains=tu_khoa)
+            )
+
+        # Bộ lọc nâng cao
+        phong_loc = request.GET.get('phong', '')
+        if phong_loc:
+            if phong_loc.isdigit():
+                queryset = queryset.filter(phong_hoc_id=phong_loc)
+            else:
+                queryset = queryset.filter(phong_hoc__ma_phong=phong_loc)
+
+        lop_loc = request.GET.get('lop', '')
+        if lop_loc:
+            queryset = queryset.filter(lop_hoc_id=lop_loc)
+
+        buoi_loc = request.GET.get('buoi', '')
+        buoi_map = {
+            'sang': (1, 5),
+            'chieu': (6, 10),
+            'toi': (11, 14),
+        }
+        if buoi_loc in buoi_map:
+            bd, kt = buoi_map[buoi_loc]
+            queryset = queryset.filter(tiet_bat_dau__lte=kt, tiet_ket_thuc__gte=bd)
+
+        tiet_loc = request.GET.get('tiet', '')
+        if tiet_loc:
+            try:
+                tiet_loc_int = int(tiet_loc)
+                queryset = queryset.filter(tiet_bat_dau__lte=tiet_loc_int, tiet_ket_thuc__gte=tiet_loc_int)
+            except ValueError:
+                pass
+
+        trang_thai = request.GET.get('trang_thai', '')
+        if trang_thai:
+            queryset = queryset.filter(trang_thai=trang_thai)
+    else:
+        # Nếu export tất cả, không lọc theo ngày
+        pass
+
+    # Sắp xếp
+    queryset = queryset.annotate(
+        priority=Case(
+            When(trang_thai='hoat_dong', then=Value(1)),
+            default=Value(2),
+            output_field=IntegerField(),
+        )
+    ).order_by('ngay_hoc', 'priority', 'tiet_bat_dau')
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "TKB He Thong"
+    
+    headers = [
+        "STT", "Mã Lớp HP", "Mã Môn", "Tên Môn", "Thứ", "Tiết", "Số Tiết", "Buổi",
+        "Mã GV", "Tên Giảng Viên", "Phòng", "Sĩ Số"
+    ]
+    ws.append(headers)
+    
+    # Helper for weekday
+    days = ["Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ nhật"]
+    
+    for idx, obj in enumerate(queryset, start=1):
+        weekday_str = days[obj.ngay_hoc.weekday()]
+        
+        tiet_bd = obj.tiet_bat_dau
+        tiet_kt = obj.tiet_ket_thuc
+        so_tiet = tiet_kt - tiet_bd + 1
+        
+        buoi = "Sáng" if tiet_bd <= 5 else ("Chiều" if tiet_bd <= 10 else "Tối")
+        
+        ma_phong = obj.phong_hoc.ma_phong if obj.phong_hoc else ""
+        ten_lop = obj.lop_hoc.ten_lop if obj.lop_hoc else obj.ma_lop
+        ma_mon = obj.mon_hoc.ma_mon if obj.mon_hoc else ""
+        ten_mon = obj.mon_hoc.ten_mon if obj.mon_hoc else ""
+        ma_gv = obj.giang_vien.ma_so if obj.giang_vien else ""
+        ten_gv = obj.giang_vien.ho_ten if obj.giang_vien else ""
+        
+        ws.append([
+            idx,
+            ten_lop,
+            ma_mon,
+            ten_mon,
+            weekday_str,
+            tiet_bd,
+            so_tiet,
+            buoi,
+            ma_gv,
+            ten_gv,
+            ma_phong,
+            obj.si_so
+        ])
+        
+    # Styling headers
+    header_fill = PatternFill(start_color="1F4E78", end_color="1F4E78", fill_type="solid")
+    header_font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
+    center_align = Alignment(horizontal="center", vertical="center")
+    left_align = Alignment(horizontal="left", vertical="center")
+    
+    thin_border = Border(
+        left=Side(style='thin', color='BFBFBF'),
+        right=Side(style='thin', color='BFBFBF'),
+        top=Side(style='thin', color='BFBFBF'),
+        bottom=Side(style='thin', color='BFBFBF')
+    )
+    
+    # Apply style to headers
+    for col_idx in range(1, 13):
+        cell = ws.cell(row=1, column=col_idx)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = center_align
+        cell.border = thin_border
+        
+    # Apply style to data rows
+    for r_idx in range(2, ws.max_row + 1):
+        for c_idx in range(1, 13):
+            cell = ws.cell(row=r_idx, column=c_idx)
+            cell.font = Font(name="Calibri", size=10)
+            cell.border = thin_border
+            if c_idx in [1, 5, 6, 7, 8, 9, 11, 12]:
+                cell.alignment = center_align
+            else:
+                cell.alignment = left_align
+                
+    # Auto-fit columns
+    for col in ws.columns:
+        max_len = max(len(str(cell.value or '')) for cell in col)
+        col_letter = openpyxl.utils.get_column_letter(col[0].column)
+        ws.column_dimensions[col_letter].width = max(max_len + 3, 10)
+        
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+    
+    filename = "TKB_Chinh_Thuc_Loc.xlsx" if not export_all else "TKB_Chinh_Thuc_ToanBo.xlsx"
+    response = HttpResponse(
+        output.read(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+

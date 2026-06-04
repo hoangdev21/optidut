@@ -1,0 +1,19 @@
+[
+    {
+        "lop_hoc_id": 1,
+        "ten_lop": "21CNCTM1",
+        "mon_hoc_id": 22,
+        "ma_mon": "AC101",
+        "ten_mon": "Lý thuyết điều khiển tự động",
+        "giang_vien_id": 209,
+        "ma_giang_vien": "2000118",
+        "ten_giang_vien": "Bùi Quang Minh",
+        "phong_hoc_id": 41,
+        "ma_phong": "B101",
+        "ngay_hoc": "2026-06-25",
+        "tiet_bat_dau": 1,
+        "tiet_ket_thuc": 4,
+        "si_so": 40,
+        "ghi_chu": "Exact duplicate schedule"
+    }
+]

@@ -39,7 +39,7 @@
         </a>
         {% endif %}
 
-        {% if user.la_giao_vu %}
+        {% if user.la_giao_vu or user.la_quan_tri %}
         <div class="nav-section">Quản lý lịch</div>
         <a href="{% url 'danh_sach_lich' %}" class="nav-link">
             <i class='bx bx-calendar-event nav-icon'></i>
