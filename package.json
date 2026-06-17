@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "boxicons": "^2.1.4",
     "mysql2": "^3.22.4"
   }
 }
