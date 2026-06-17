@@ -8,6 +8,7 @@ urlpatterns = [
     path('chinh-sua/<int:pk>/', views.chinh_sua_lich, name='chinh_sua_lich'),
     path('huy-lich/<int:pk>/', views.huy_lich, name='huy_lich'),
     path('xoa-lich/<int:pk>/', views.xoa_lich, name='xoa_lich'),
+    path('xoa-hang-loat-lich/', views.xoa_hang_loat_lich, name='xoa_hang_loat_lich'),
     path('tra-cuu/', views.tra_cuu_phong, name='tra_cuu_phong'),
     path('goi-y-phong/', views.goi_y_phong_toi_uu, name='goi_y_phong'),
     path('api/loc-lop-theo-mon/', views.api_loc_lop_theo_mon, name='api_loc_lop_theo_mon'),
@@ -24,6 +25,10 @@ urlpatterns = [
     # Quản lý SV trong lớp HP
     path('lop/<int:pk>/sinh-vien/', views.danh_sach_sv_lop, name='danh_sach_sv_lop'),
     path('lop/<int:pk>/them-sv/', views.them_sv_vao_lop, name='them_sv_vao_lop'),
+    path('lop/<int:pk>/them-sv/download-mau/', views.download_mau_csv_sv_lop, name='download_mau_csv_sv_lop'),
+    path('lop/<int:pk>/them-sv/preview/', views.preview_import_sv_csv, name='preview_import_sv_csv'),
+    path('lop/<int:pk>/them-sv/confirm/', views.confirm_import_sv_csv, name='confirm_import_sv_csv'),
+    path('lop/<int:pk>/them-sv/cancel/', views.cancel_import_sv_csv, name='cancel_import_sv_csv'),
     path('lop/<int:pk>/xoa-sv/<int:sv_id>/', views.xoa_sv_khoi_lop, name='xoa_sv_khoi_lop'),
     # Yêu cầu đổi lịch
     path('yeu-cau/tao/<int:lich_pk>/', views.tao_yeu_cau_doi_lich, name='tao_yeu_cau_doi_lich'),

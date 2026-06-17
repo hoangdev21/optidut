@@ -8,7 +8,16 @@
     .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
     .page-title { font-size: 20px; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 10px; margin: 0; }
 
-    .selection-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+    .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.02); margin-bottom: 20px; }
+    .card-header { padding: 16px 20px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 14px; color: #1e293b; }
+    .card-body { padding: 20px; }
+
+    .csv-upload-row { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+    .csv-upload-row .file-group { flex: 1; min-width: 250px; }
+    .csv-upload-row .file-group label { display: block; font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 6px; }
+    .csv-upload-row .file-group input[type="file"] { width: 100%; height: 42px; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: #fff; cursor: pointer; }
+    .csv-upload-row .file-group input[type="file"]:focus { border-color: #003366; outline: none; box-shadow: 0 0 0 3px rgba(0, 51, 102, 0.1); }
+    .csv-hint { font-size: 12px; color: #94a3b8; margin-top: 6px; }
 
     .toolbar-box { padding: 16px 20px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 16px; }
     
@@ -57,9 +66,76 @@
         </a>
     </div>
 
-    <form method="post" class="selection-card">
+    <!-- Import CSV -->
+    <div class="card">
+        <div class="card-header"><i class='bx bx-file'></i> Import nhanh từ file CSV</div>
+        <div class="card-body">
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="csv-upload-row">
+                    <div class="file-group">
+                        <label for="csvFile">Chọn file CSV</label>
+                        <input type="file" id="csvFile" name="csv_file" accept=".csv" required>
+                        <div class="csv-hint">
+                            <i class='bx bx-info-circle'></i>
+                            File CSV cần có cột <strong>ma_so</strong> (MSSV). 
+                            <a href="{% url 'download_mau_csv_sv_lop' lop.pk %}" style="color:#003366;font-weight:600;">Tải file mẫu</a>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary"><i class='bx bx-upload'></i> Import CSV</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if csv_errors %}
+    <div class="card" style="border-color: #dc2626;">
+        <div class="card-header" style="background: #fef2f2; color: #dc2626; border-color: #fecaca;">
+            <i class='bx bx-error-circle'></i> Lỗi import CSV — cần sửa file và tải lại
+        </div>
+        <div class="card-body">
+            <p style="color:#475569;margin-bottom:12px;font-size:14px;">
+                Có <strong>{{ csv_errors|length }}</strong> lỗi trong file CSV.
+                {% if csv_valid_count %}
+                <span style="color:#16a34a;">{{ csv_valid_count }} dòng hợp lệ sẽ được import sau khi sửa hết lỗi.</span>
+                {% endif %}
+            </p>
+            <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:16px;max-height:400px;overflow-y:auto;">
+                <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                    <thead>
+                        <tr style="border-bottom:2px solid #fecaca;">
+                            <th style="padding:8px 12px;text-align:left;color:#991b1b;width:80px;">Dòng</th>
+                            <th style="padding:8px 12px;text-align:left;color:#991b1b;">Lỗi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for err in csv_errors %}
+                        <tr style="border-bottom:1px solid #fee2e2;">
+                            <td style="padding:8px 12px;font-family:monospace;color:#991b1b;font-weight:600;white-space:nowrap;">
+                                {{ err|slice:":8"|cut:":" }}
+                            </td>
+                            <td style="padding:8px 12px;color:#b91c1c;">{{ err }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div style="margin-top:16px;padding:14px;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;font-size:13px;color:#92400e;">
+                <i class='bx bx-bulb'></i>
+                <strong>Hướng dẫn:</strong> Sửa lại các lỗi trong file CSV, sau đó tải lên lại. 
+                Import chỉ được thực hiện khi <strong>tất cả</strong> các dòng đều hợp lệ.
+                <a href="{% url 'download_mau_csv_sv_lop' lop.pk %}" style="color:#003366;font-weight:600;margin-left:8px;">Tải file mẫu</a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Chọn thủ công -->
+    <form method="post" class="card">
         {% csrf_token %}
         
+        <div class="card-header"><i class='bx bx-list-ul'></i> Chọn sinh viên từ danh sách</div>
+
         <div class="toolbar-box">
             <div class="search-wrapper">
                 <i class='bx bx-search'></i>

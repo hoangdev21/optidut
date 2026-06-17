@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+{% block title %}Xem trước import SV - {{ lop.ten_lop }} - OptiDUT{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-content { max-width: 100% !important; padding: 20px 40px !important; }
+    .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+    .page-title { font-size: 20px; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 10px; margin: 0; }
+
+    .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.02); margin-bottom: 20px; }
+    .card-header { padding: 16px 20px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 14px; color: #1e293b; }
+    .card-body { padding: 20px; }
+
+    .stats-row { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 0; }
+    .stat-item { flex: 1; min-width: 150px; padding: 16px 20px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center; }
+    .stat-item .num { font-size: 28px; font-weight: 800; color: #003366; }
+    .stat-item .label { font-size: 12px; color: #64748b; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+
+    .table-container { max-height: 500px; overflow-y: auto; }
+    .data-table { width: 100%; border-collapse: collapse; text-align: left; }
+    .data-table thead { position: sticky; top: 0; z-index: 10; background: #003366; }
+    .data-table th { padding: 12px 20px; font-size: 12px; font-weight: 700; color: #ffffff; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #00264d; }
+    .data-table td { padding: 14px 20px; font-size: 14px; color: #1e293b; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+    .data-table tr:hover { background: #f8fafc; }
+
+    .mssv-tag { font-family: monospace; font-weight: 700; color: #003366; background: #f0f7ff; padding: 2px 6px; border-radius: 4px; border: 1px solid #d0e7ff; }
+
+    .action-bar { display: flex; justify-content: flex-end; gap: 12px; }
+    .btn { height: 38px; border-radius: 6px; padding: 0 20px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; border: 1px solid transparent; transition: all 0.2s; text-decoration: none; }
+    .btn-primary { background: #003366; color: white; }
+    .btn-primary:hover { background: #00264d; }
+    .btn-outline { background: white; border-color: #e2e8f0; color: #64748b; }
+    .btn-outline:hover { background: #f8fafc; color: #1e293b; border-color: #cbd5e1; }
+    .btn-danger { border-color: #fca5a5; color: #dc2626; }
+    .btn-danger:hover { background: #fef2f2; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title"><i class='bx bx-file'></i> Xem trước import CSV: {{ lop.ten_lop }}</h1>
+    <a href="{% url 'them_sv_vao_lop' lop.pk %}" class="btn btn-outline">
+        <i class='bx bx-arrow-back'></i> Quay lại
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body" style="padding-bottom:12px;">
+        <div class="stats-row">
+            <div class="stat-item">
+                <div class="num">{{ total }}</div>
+                <div class="label">Sinh viên sẽ thêm</div>
+            </div>
+            <div class="stat-item">
+                <div class="num" style="color:#16a34a;">{{ lop.ten_lop }}</div>
+                <div class="label">Lớp học phần</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header"><i class='bx bx-list-ul'></i> Danh sách sinh viên sẽ được thêm</div>
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th style="width:60px;">#</th>
+                    <th>MSSV</th>
+                    <th>Họ tên</th>
+                    <th>Lớp sinh hoạt</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in valid_rows %}
+                <tr>
+                    <td style="color:#94a3b8;font-family:monospace;">{{ forloop.counter }}</td>
+                    <td><span class="mssv-tag">{{ row.ma_so }}</span></td>
+                    <td style="font-weight:600;color:#1e293b;">{{ row.ho_ten }}</td>
+                    <td>{{ row.lop_sinh_hoat|default:"—" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="action-bar">
+    <form action="{% url 'cancel_import_sv_csv' lop.pk %}" method="post" style="margin:0;">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-outline btn-danger">
+            <i class='bx bx-x'></i> Hủy bỏ
+        </button>
+    </form>
+    <form action="{% url 'confirm_import_sv_csv' lop.pk %}" method="post" style="margin:0;">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-primary">
+            <i class='bx bx-check-double'></i> Xác nhận import {{ total }} sinh viên
+        </button>
+    </form>
+</div>
+{% endblock %}

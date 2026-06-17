@@ -146,6 +146,7 @@ def danh_sach_lich(request):
     week_data = []
     for item in week_queryset:
         week_data.append({
+            'id': item.pk,
             'lop_hoc_id': item.lop_hoc.id if item.lop_hoc else None,
             'ten_lop': item.lop_hoc.ten_lop if item.lop_hoc else item.ma_lop,
             'mon_hoc_id': item.mon_hoc.id if item.mon_hoc else None,
@@ -173,6 +174,7 @@ def danh_sach_lich(request):
     table_data = []
     for item in base_qs:
         table_data.append({
+            'id': item.pk,
             'lop_hoc_id': item.lop_hoc.id if item.lop_hoc else None,
             'ten_lop': item.lop_hoc.ten_lop if item.lop_hoc else item.ma_lop,
             'mon_hoc_id': item.mon_hoc.id if item.mon_hoc else None,
@@ -420,7 +422,21 @@ def xoa_lich(request, pk):
         mon_hoc_ten = str(lich.mon_hoc)
         lich.delete()
         messages.success(request, f'Đã xóa vĩnh viễn lịch học môn "{mon_hoc_ten}".')
-    return redirect('danh_sach_lich')
+    redirect_url = request.POST.get('next', '') or request.GET.get('next', '') or 'danh_sach_lich'
+    return redirect(redirect_url)
+
+
+@kiem_tra_quyen_lich
+def xoa_hang_loat_lich(request):
+    """Xóa nhiều lịch học cùng lúc."""
+    if request.method == 'POST':
+        lich_ids = request.POST.getlist('lich_ids')
+        if not lich_ids:
+            messages.warning(request, 'Vui lòng chọn ít nhất một lịch học để xóa.')
+        else:
+            count, _ = LichHoc.objects.filter(id__in=lich_ids).delete()
+            messages.success(request, f'Đã xóa vĩnh viễn {count} lịch học.')
+    return redirect(request.POST.get('next', 'danh_sach_lich'))
 
 
 @login_required
@@ -813,7 +829,13 @@ def them_sv_vao_lop(request, pk):
     """Thêm sinh viên vào lớp học phần."""
     from apps.NguoiDung.models import NguoiDung
     lop = get_object_or_404(LopHoc, pk=pk)
+
     if request.method == 'POST':
+        # Import CSV
+        if request.FILES.get('csv_file'):
+            return _xu_ly_csv_them_sv(request, lop)
+
+        # Chọn checkbox
         sv_ids = request.POST.getlist('sinh_vien_ids')
         so_them = 0
         for sv_id in sv_ids:
@@ -824,17 +846,183 @@ def them_sv_vao_lop(request, pk):
                 so_them += 1
         messages.success(request, f'Đã thêm {so_them} sinh viên vào lớp {lop.ten_lop}.')
         return redirect('danh_sach_sv_lop', pk=lop.pk)
-    
-    # DS sinh viên chưa đăng ký lớp này
+
     da_dk_ids = DangKyHocPhan.objects.filter(lop_hoc=lop).values_list('sinh_vien_id', flat=True)
     sv_chua_dk = NguoiDung.objects.filter(
         vai_tro='sinh_vien', is_active=True
     ).exclude(id__in=da_dk_ids).select_related('lop_sinh_hoat').order_by('ho_ten')
-    
+
     return render(request, 'LichHoc/ThemSVVaoLop.html', {
         'lop': lop,
         'sv_chua_dk': sv_chua_dk,
     })
+
+
+@kiem_tra_quyen_lich
+def _xu_ly_csv_them_sv(request, lop):
+    """Xử lý upload CSV thêm sinh viên vào lớp — validate chặt chẽ, preview trước khi import."""
+    from apps.NguoiDung.models import NguoiDung
+    import json, os
+    from django.conf import settings
+
+    try:
+        rows = _doc_csv_upload(request.FILES['csv_file'])
+    except ValueError as e:
+        messages.error(request, str(e))
+        return redirect('them_sv_vao_lop', pk=lop.pk)
+
+    if not rows:
+        messages.error(request, 'File CSV không có dữ liệu.')
+        return redirect('them_sv_vao_lop', pk=lop.pk)
+
+    col = None
+    for name in ('ma_so', 'mssv', 'ma_sv', 'username', 'ma'):
+        if name in rows[0]:
+            col = name
+            break
+    if not col:
+        messages.error(request, 'File CSV phải có cột "ma_so" (hoặc "mssv", "ma_sv", "username") chứa mã số sinh viên.')
+        return redirect('them_sv_vao_lop', pk=lop.pk)
+
+    # Load danh sách sinh viên có sẵn trong hệ thống
+    sv_map = {}
+    for sv in NguoiDung.objects.filter(vai_tro='sinh_vien', is_active=True).select_related('lop_sinh_hoat'):
+        sv_map[sv.ma_so] = sv
+
+    da_dk_ids = set(DangKyHocPhan.objects.filter(lop_hoc=lop).values_list('sinh_vien_id', flat=True))
+
+    errors = []
+    valid_rows = []
+    seen_ma_so = set()
+
+    for idx, row in enumerate(rows, start=2):
+        ma_so = row.get(col, '').strip()
+        if not ma_so:
+            errors.append(f'Dòng {idx}: Thiếu MSSV (ô trống).')
+            continue
+        if ma_so in seen_ma_so:
+            errors.append(f'Dòng {idx}: MSSV "{ma_so}" bị trùng trong file CSV.')
+            continue
+        seen_ma_so.add(ma_so)
+
+        sv = sv_map.get(ma_so)
+        if not sv:
+            errors.append(f'Dòng {idx}: MSSV "{ma_so}" không tồn tại trong hệ thống.')
+            continue
+        if sv.pk in da_dk_ids:
+            errors.append(f'Dòng {idx}: MSSV "{ma_so}" ({sv.ho_ten}) đã có trong lớp {lop.ten_lop}.')
+            continue
+
+        valid_rows.append({
+            'ma_so': sv.ma_so,
+            'ho_ten': sv.ho_ten,
+            'lop_sinh_hoat': sv.lop_sinh_hoat.ten_lop if sv.lop_sinh_hoat else '',
+            'sv_id': sv.pk,
+        })
+
+    if errors:
+        da_dk_ids = DangKyHocPhan.objects.filter(lop_hoc=lop).values_list('sinh_vien_id', flat=True)
+        sv_chua_dk = NguoiDung.objects.filter(
+            vai_tro='sinh_vien', is_active=True
+        ).exclude(id__in=da_dk_ids).select_related('lop_sinh_hoat').order_by('ho_ten')
+        return render(request, 'LichHoc/ThemSVVaoLop.html', {
+            'lop': lop,
+            'sv_chua_dk': sv_chua_dk,
+            'csv_errors': errors,
+            'csv_valid_count': len(valid_rows),
+        })
+
+    # All valid → save to session, redirect preview
+    temp_dir = os.path.join(settings.MEDIA_ROOT, 'temp')
+    os.makedirs(temp_dir, exist_ok=True)
+    temp_file = os.path.join(temp_dir, f'import_sv_{request.user.id}_{lop.pk}.json')
+    with open(temp_file, 'w', encoding='utf-8') as f:
+        json.dump(valid_rows, f, ensure_ascii=False, indent=4)
+
+    request.session['csv_import_sv_file'] = temp_file
+    request.session['csv_import_sv_lop_id'] = lop.pk
+    request.session['csv_import_sv_lop_ten'] = lop.ten_lop
+
+    return redirect('preview_import_sv_csv', pk=lop.pk)
+
+
+@kiem_tra_quyen_lich
+def preview_import_sv_csv(request, pk):
+    """Xem trước dữ liệu import CSV sinh viên vào lớp."""
+    import json, os
+
+    lop = get_object_or_404(LopHoc, pk=pk)
+    file_path = request.session.get('csv_import_sv_file', '')
+    lop_id = request.session.get('csv_import_sv_lop_id')
+
+    if not file_path or not os.path.exists(file_path) or lop_id != lop.pk:
+        messages.error(request, 'Không tìm thấy dữ liệu import. Vui lòng tải file CSV lại.')
+        return redirect('them_sv_vao_lop', pk=lop.pk)
+
+    with open(file_path, 'r', encoding='utf-8') as f:
+        valid_rows = json.load(f)
+
+    return render(request, 'LichHoc/PreviewImportSVCSV.html', {
+        'lop': lop,
+        'valid_rows': valid_rows,
+        'total': len(valid_rows),
+    })
+
+
+@kiem_tra_quyen_lich
+@transaction.atomic
+def confirm_import_sv_csv(request, pk):
+    """Xác nhận import — ghi DangKyHocPhan."""
+    import json, os
+
+    lop = get_object_or_404(LopHoc, pk=pk)
+    file_path = request.session.get('csv_import_sv_file', '')
+    lop_id = request.session.get('csv_import_sv_lop_id')
+
+    if not file_path or not os.path.exists(file_path) or lop_id != lop.pk:
+        messages.error(request, 'Không tìm thấy dữ liệu import. Vui lòng tải file CSV lại.')
+        return redirect('them_sv_vao_lop', pk=lop.pk)
+
+    with open(file_path, 'r', encoding='utf-8') as f:
+        valid_rows = json.load(f)
+
+    da_dk_ids = set(DangKyHocPhan.objects.filter(lop_hoc=lop).values_list('sinh_vien_id', flat=True))
+    them_duoc = 0
+    for row in valid_rows:
+        if row['sv_id'] in da_dk_ids:
+            continue
+        DangKyHocPhan.objects.create(sinh_vien_id=row['sv_id'], lop_hoc=lop)
+        da_dk_ids.add(row['sv_id'])
+        them_duoc += 1
+
+    # Cleanup
+    try:
+        os.remove(file_path)
+    except Exception:
+        pass
+    request.session.pop('csv_import_sv_file', None)
+    request.session.pop('csv_import_sv_lop_id', None)
+    request.session.pop('csv_import_sv_lop_ten', None)
+
+    messages.success(request, f'Đã import thành công {them_duoc} sinh viên vào lớp {lop.ten_lop}.')
+    return redirect('danh_sach_sv_lop', pk=lop.pk)
+
+
+@kiem_tra_quyen_lich
+def cancel_import_sv_csv(request, pk):
+    """Hủy import CSV."""
+    import os
+    file_path = request.session.get('csv_import_sv_file', '')
+    if file_path and os.path.exists(file_path):
+        try:
+            os.remove(file_path)
+        except Exception:
+            pass
+    request.session.pop('csv_import_sv_file', None)
+    request.session.pop('csv_import_sv_lop_id', None)
+    request.session.pop('csv_import_sv_lop_ten', None)
+    messages.info(request, 'Đã hủy import CSV.')
+    return redirect('them_sv_vao_lop', pk=pk)
 
 
 @kiem_tra_quyen_lich
@@ -846,6 +1034,20 @@ def xoa_sv_khoi_lop(request, pk, sv_id):
         dk.delete()
         messages.success(request, 'Đã xóa sinh viên khỏi lớp học phần.')
     return redirect('danh_sach_sv_lop', pk=lop.pk)
+@kiem_tra_quyen_lich
+def download_mau_csv_sv_lop(request, pk):
+    """Tải file mẫu CSV để import sinh viên vào lớp."""
+    lop = get_object_or_404(LopHoc, pk=pk)
+    response = HttpResponse(content_type='text/csv; charset=utf-8-sig')
+    response['Content-Disposition'] = f'attachment; filename="mau_import_sv_{lop.ten_lop}.csv"'
+    writer = csv.writer(response)
+    writer.writerow(['ma_so'])
+    writer.writerow(['MSSV1'])
+    writer.writerow(['MSSV2'])
+    writer.writerow(['MSSV3'])
+    return response
+
+
 @kiem_tra_quyen_lich
 @transaction.atomic
 def nhap_lop_hoc_csv(request):
@@ -2276,25 +2478,31 @@ def export_lich_excel(request):
         'mon_hoc', 'giang_vien', 'phong_hoc', 'lop_hoc'
     )
     
-    # Check if they want to export ALL records (e.g. all=1 in URL)
     export_all = request.GET.get('all', '')
     export_table = request.GET.get('table', '')
+    tab = request.GET.get('tab', 'day')
     
-    if not export_all:
-        if not export_table:
-            # Lọc theo ngày
-            hom_nay = timezone.now().date()
-            ngay_loc = request.GET.get('ngay', '')
-            if ngay_loc:
-                try:
-                    ngay_hien_tai = datetime.strptime(ngay_loc, '%Y-%m-%d').date()
-                except ValueError:
-                    ngay_hien_tai = hom_nay
-            else:
+    if export_all or export_table or tab == 'table':
+        pass
+    else:
+        hom_nay = timezone.now().date()
+        ngay_loc = request.GET.get('ngay', '')
+        if ngay_loc:
+            try:
+                ngay_hien_tai = datetime.strptime(ngay_loc, '%Y-%m-%d').date()
+            except ValueError:
                 ngay_hien_tai = hom_nay
-            
-            queryset = queryset.filter(ngay_hoc=ngay_hien_tai)
+        else:
+            ngay_hien_tai = hom_nay
 
+        if tab == 'year':
+            queryset = queryset.filter(ngay_hoc__year=ngay_hien_tai.year)
+        elif tab == 'week':
+            monday = ngay_hien_tai - timedelta(days=ngay_hien_tai.weekday())
+            sunday = monday + timedelta(days=6)
+            queryset = queryset.filter(ngay_hoc__range=[monday, sunday])
+        else:
+            queryset = queryset.filter(ngay_hoc=ngay_hien_tai)
         
         # Tìm kiếm
         tu_khoa = request.GET.get('q', '')
@@ -2337,9 +2545,6 @@ def export_lich_excel(request):
         trang_thai = request.GET.get('trang_thai', '')
         if trang_thai:
             queryset = queryset.filter(trang_thai=trang_thai)
-    else:
-        # Nếu export tất cả, không lọc theo ngày
-        pass
 
     # Sắp xếp
     queryset = queryset.annotate(

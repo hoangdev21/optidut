@@ -269,6 +269,25 @@
         margin-top: 2px;
     }
 
+    /* Bulk Action Bar */
+    .bulk-bar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: #fff;
+        border-top: 2px solid #003366;
+        padding: 12px 24px;
+        display: none;
+        align-items: center;
+        justify-content: space-between;
+        z-index: 999;
+        box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+    }
+    .bulk-bar.active { display: flex; }
+    .bulk-bar .info { font-size: 14px; font-weight: 600; color: #1e293b; }
+    .bulk-bar .actions { display: flex; gap: 10px; }
+
     /* Modern Modal styling */
     .preview-modal {
         display: none;
@@ -363,7 +382,7 @@
         <h1 class="page-title">{% if user.la_giang_vien %}Lịch dạy của tôi{% else %}Danh sách lịch học{% endif %}</h1>
         {% if user.la_giao_vu or user.la_quan_tri %}
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <a href="{% url 'export_lich_excel' %}?{{ request.GET.urlencode }}" class="btn btn-outline" style="border-color: #10B981; color: #10B981;"><i class='bx bx-export'></i> Xuất Excel (Lọc)</a>
+            <a href="{% url 'export_lich_excel' %}?{{ request.GET.urlencode }}" id="exportFilterBtn" class="btn btn-outline" style="border-color: #10B981; color: #10B981;"><i class='bx bx-export'></i> Xuất Excel (Lọc)</a>
             <a href="{% url 'export_lich_excel' %}?all=1" class="btn btn-outline" style="border-color: #10B981; color: #10B981;"><i class='bx bx-spreadsheet'></i> Xuất tất cả Excel</a>
             <a href="{% url 'nhap_lich_excel' %}" class="btn btn-outline" style="border-color: #10B981; color: #10B981;"><i class='bx bx-import'></i> Nhập từ Excel</a>
             <a href="{% url 'them_lich' %}" class="btn btn-accent">+ Thêm lịch</a>
@@ -482,6 +501,7 @@
             <table class="data-table">
                 <thead>
                     <tr>
+                        {% if user.la_giao_vu or user.la_quan_tri %}<th class="check-cell" style="width:40px;"><input type="checkbox" id="selectAllLich" class="check-input" onchange="toggleAllLich(this)"></th>{% endif %}
                         <th>Mã lớp</th>
                         <th>Môn học</th>
                         {% if not user.la_giang_vien %}<th>Giảng viên</th>{% endif %}
@@ -495,6 +515,7 @@
                 <tbody>
                     {% for l in lich_hocs %}
                     <tr>
+                        {% if user.la_giao_vu or user.la_quan_tri %}<td class="check-cell"><input type="checkbox" class="lich-checkbox check-input" value="{{ l.pk }}" onchange="updateBulkBar()"></td>{% endif %}
                         <td><span class="badge badge-outline">{{ l.lop_hoc.ten_lop|default:l.ma_lop|default:"-" }}</span></td>
                         <td>{{ l.mon_hoc }}</td>
                         {% if not user.la_giang_vien %}<td>{{ l.giang_vien.ho_ten }}</td>{% endif %}
@@ -527,6 +548,7 @@
                                 {% endif %}
                                 <form action="{% url 'xoa_lich' l.pk %}" method="POST" style="display:inline;" onsubmit="return confirm('BẠN CÓ CHẮC CHẮN MUỐN XÓA VĨNH VIỄN LỊCH HỌC NÀY?\nThao tác này không thể hoàn tác.')">
                                     {% csrf_token %}
+                                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
                                     <button type="submit" class="btn btn-sm btn-outline" style="color:#dc2626;border-color:#fecaca;" title="Xóa vĩnh viễn">
                                         <i class='bx bx-trash'></i>
                                     </button>
@@ -551,13 +573,31 @@
                         {% endif %}
                     </tr>
                     {% empty %}
-                    <tr><td colspan="{% if user.la_giao_vu or user.la_quan_tri %}8{% else %}7{% endif %}" class="empty-state">Không có lịch học nào trong ngày này.</td></tr>
+                    <tr><td colspan="{% if user.la_giao_vu or user.la_quan_tri %}9{% elif user.la_giang_vien %}8{% else %}7{% endif %}" class="empty-state">Không có lịch học nào trong ngày này.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
         {% with page_obj=lich_hocs %}{% include 'components/Pagination.html' %}{% endwith %}
     </div>
+
+    <!-- Bulk Action Bar -->
+    {% if user.la_giao_vu or user.la_quan_tri %}
+    <div class="bulk-bar" id="bulkBar">
+        <div class="info" id="bulkInfo">Đã chọn: <strong>0</strong> lịch học</div>
+        <div class="actions">
+            <button type="button" class="btn btn-outline" onclick="clearBulkSelection()" style="border-color:#e2e8f0;">Bỏ chọn</button>
+            <button type="button" class="btn" style="background:#dc2626;color:#fff;" onclick="confirmBulkDelete()">
+                <i class='bx bx-trash'></i> Xóa hàng loạt
+            </button>
+        </div>
+    </div>
+    <form id="bulkDeleteForm" action="{% url 'xoa_hang_loat_lich' %}" method="post">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+        <div id="bulkInputsContainer"></div>
+    </form>
+    {% endif %}
 
     <!-- WEEK VIEW PANEL -->
     <div id="panel-week" class="view-panel">
@@ -623,6 +663,7 @@
                         <th style="white-space: nowrap;">Tên Giảng Viên</th>
                         <th style="width: 75px; text-align: center; white-space: nowrap;">Phòng</th>
                         <th style="width: 75px; text-align: center; white-space: nowrap;">Sĩ Số</th>
+                        {% if user.la_giao_vu or user.la_quan_tri %}<th style="width: 50px; text-align: center; white-space: nowrap;">Xóa</th>{% endif %}
                     </tr>
                 </thead>
                 <tbody id="table-grid-tbody">
@@ -651,6 +692,7 @@
                                 <th style="width: 90px; text-align: center;">Tiết</th>
                                 <th style="width: 70px; text-align: center;">Sĩ số</th>
                                 <th>Ghi chú</th>
+                                {% if user.la_giao_vu or user.la_quan_tri %}<th style="width: 60px; text-align: center;">Xóa</th>{% endif %}
                             </tr>
                         </thead>
                         <tbody id="modalTableBody">
@@ -729,6 +771,14 @@
                     }
                 }
             });
+
+            // Update export link with current tab
+            const exportBtn = document.getElementById('exportFilterBtn');
+            if (exportBtn) {
+                let url = new URL(exportBtn.href);
+                url.searchParams.set('tab', tabName);
+                exportBtn.href = url.toString();
+            }
 
             // Trigger rendering for active tab
             if (tabName === 'week') {
@@ -889,8 +939,9 @@
 
             const days = ["Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy", "Chủ Nhật"];
 
+            const tableCols = {{ user.la_giao_vu|yesno:"13,12" }} | {{ user.la_quan_tri|yesno:"13,12" }};
             if (tableData.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="12" class="empty-state">Không có dữ liệu thời khóa biểu.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="` + tableCols + `" class="empty-state">Không có dữ liệu thời khóa biểu.</td></tr>`;
                 return;
             }
 
@@ -905,7 +956,20 @@
                 const so_tiet = tiet_kt - tiet_bd + 1;
                 const buoi = tiet_bd <= 5 ? "Sáng" : (tiet_bd <= 10 ? "Chiều" : "Tối");
 
+                const isAdmin = {{ user.la_giao_vu|yesno:"true,false" }} || {{ user.la_quan_tri|yesno:"true,false" }};
                 const tr = document.createElement('tr');
+                let actionsHtml = '';
+                if (isAdmin) {
+                    actionsHtml = `
+                        <form method="post" action="/schedules/xoa-lich/${row.id}/" style="display:inline;" onsubmit="return confirm('BẠN CÓ CHẮC CHẮN MUỐN XÓA VĨNH VIỄN LỊCH HỌC NÀY?')">
+                            <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                            <button type="submit" class="btn btn-sm btn-outline" style="color:#dc2626;border-color:#fecaca;padding:2px 6px;font-size:11px;" title="Xóa">
+                                <i class='bx bx-trash'></i>
+                            </button>
+                        </form>
+                    `;
+                }
                 tr.innerHTML = `
                     <td style="text-align: center; color: var(--color-text-secondary); white-space: nowrap;">${idx + 1}</td>
                     <td style="font-weight: 600; white-space: nowrap;">${row.ten_lop}</td>
@@ -919,6 +983,7 @@
                     <td style="font-weight: 500; white-space: nowrap;">${row.ten_giang_vien}</td>
                     <td style="text-align: center; font-weight: 700; color: var(--color-primary); white-space: nowrap;">${row.ma_phong}</td>
                     <td style="text-align: center; font-weight: 600; white-space: nowrap;">${row.si_so}</td>
+                    ${isAdmin ? `<td style="text-align: center; white-space: nowrap;">${actionsHtml}</td>` : ''}
                 `;
                 tbody.appendChild(tr);
             });
@@ -949,8 +1014,21 @@
                 return;
             }
 
+            const isAdmin = {{ user.la_giao_vu|yesno:"true,false" }} || {{ user.la_quan_tri|yesno:"true,false" }};
             list.forEach(item => {
                 const tr = document.createElement('tr');
+                let actionsHtml = '';
+                if (isAdmin) {
+                    actionsHtml = `
+                        <form method="post" action="/schedules/xoa-lich/${item.id}/" style="display:inline;" onsubmit="return confirm('BẠN CÓ CHẮC CHẮN MUỐN XÓA VĨNH VIỄN LỊCH HỌC NÀY?')">
+                            <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                            <button type="submit" class="btn btn-sm btn-outline" style="color:#dc2626;border-color:#fecaca;padding:4px 8px;font-size:11px;" title="Xóa">
+                                <i class='bx bx-trash'></i>
+                            </button>
+                        </form>
+                    `;
+                }
                 tr.innerHTML = `
                     <td style="font-weight: 700; color: var(--color-primary);">${item.ma_phong}</td>
                     <td style="font-weight: 600;">${item.ten_lop}</td>
@@ -959,6 +1037,7 @@
                     <td style="text-align: center; font-weight: 600;">${item.tiet_bat_dau} - ${item.tiet_ket_thuc}</td>
                     <td style="text-align: center;">${item.si_so}</td>
                     <td style="color: var(--color-text-secondary); font-size: 11px;">${item.ghi_chu || '-'}</td>
+                    <td style="text-align: center; white-space: nowrap;">${actionsHtml}</td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -974,6 +1053,50 @@
             if (event.target === modal) {
                 closeModal();
             }
+        }
+
+        // BULK DELETE
+        function toggleAllLich(master) {
+            document.querySelectorAll('.lich-checkbox').forEach(cb => cb.checked = master.checked);
+            updateBulkBar();
+        }
+
+        function updateBulkBar() {
+            const checked = document.querySelectorAll('.lich-checkbox:checked');
+            const bar = document.getElementById('bulkBar');
+            const info = document.getElementById('bulkInfo');
+            if (checked.length > 0) {
+                bar.classList.add('active');
+                info.innerHTML = `Đã chọn: <strong>${checked.length}</strong> lịch học`;
+            } else {
+                bar.classList.remove('active');
+            }
+        }
+
+        function clearBulkSelection() {
+            document.querySelectorAll('.lich-checkbox').forEach(cb => cb.checked = false);
+            if (document.getElementById('selectAllLich')) {
+                document.getElementById('selectAllLich').checked = false;
+            }
+            updateBulkBar();
+        }
+
+        function confirmBulkDelete() {
+            const checked = document.querySelectorAll('.lich-checkbox:checked');
+            if (checked.length === 0) return;
+
+            if (!confirm(`BẠN CÓ CHẮC CHẮN MUỐN XÓA VĨNH VIỄN ${checked.length} LỊCH HỌC NÀY?\nThao tác này không thể hoàn tác.`)) return;
+
+            const container = document.getElementById('bulkInputsContainer');
+            container.innerHTML = '';
+            checked.forEach(cb => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'lich_ids';
+                input.value = cb.value;
+                container.appendChild(input);
+            });
+            document.getElementById('bulkDeleteForm').submit();
         }
     </script>
 
